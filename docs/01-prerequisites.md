@@ -80,8 +80,10 @@ read -r -p "Fork 저장소 이름: " GITHUB_REPO
 read -r -p "확인한 기본 브랜치 이름: " GIT_BRANCH
 test -n "$GITHUB_OWNER" && test -n "$GITHUB_REPO" && test -n "$GIT_BRANCH"
 export GITHUB_OWNER GITHUB_REPO GIT_BRANCH
-export SUBSCRIPTION_ID="$(az account show --query id -o tsv)"
-export SUFFIX="$(date -u +%m%d%H%M%S)-$RANDOM"
+SUBSCRIPTION_ID="$(az account show --query id -o tsv)"
+test -n "$SUBSCRIPTION_ID"
+SUFFIX="$(date -u +%m%d%H%M%S)-$RANDOM"
+export SUBSCRIPTION_ID SUFFIX
 export RESOURCE_GROUP="rg-argocd-ws-$SUFFIX"
 export CLUSTER="aks-argocd-ws-$SUFFIX"
 export LOCATION=koreacentral

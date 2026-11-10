@@ -62,9 +62,10 @@ kubectl config use-context "$CLUSTER"
 kubectl config current-context
 kubectl wait --for=condition=Ready nodes --all --timeout=300s
 kubectl get nodes
-export NODE_RESOURCE_GROUP="$(az aks show --resource-group "$RESOURCE_GROUP" \
+NODE_RESOURCE_GROUP="$(az aks show --resource-group "$RESOURCE_GROUP" \
   --name "$CLUSTER" --query nodeResourceGroup -o tsv)"
 test -n "$NODE_RESOURCE_GROUP"
+export NODE_RESOURCE_GROUP
 printf 'export NODE_RESOURCE_GROUP=%q\n' "$NODE_RESOURCE_GROUP" >> "$HOME/.aks-argocd-ws-env"
 printf 'AKS 관리 노드 그룹: %s\n' "$NODE_RESOURCE_GROUP"
 ```
