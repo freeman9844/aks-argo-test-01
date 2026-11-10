@@ -50,12 +50,12 @@ az k8s-extension create --resource-group "$RESOURCE_GROUP" \
   --config "redis-ha.enabled=false"
 az k8s-extension show --resource-group "$RESOURCE_GROUP" \
   --cluster-name "$CLUSTER" --cluster-type managedClusters --name "$EXTENSION_NAME" \
-  --query '{State:provisioningState,Type:extensionType,Version:version}' -o table
+  --query '{State:provisioningState,Type:extensionType,Version:currentVersion}' -o table
 test "$(az k8s-extension show -g "$RESOURCE_GROUP" --cluster-name "$CLUSTER" \
   --cluster-type managedClusters -n "$EXTENSION_NAME" --query provisioningState -o tsv)" = Succeeded
 ```
 
-GA용 기본 release train을 사용합니다. 출력된 실제 extension 버전을 기록하세요. 이전 `0.0.x`·preview 예제와 설정 키를 섞지 않습니다. 설치 성공만으로 앱 배포가 완료된 것은 아닙니다.
+GA용 기본 release train을 사용합니다. 출력된 실제 extension 버전을 기록하세요. 실행 중 버전은 `currentVersion`입니다. 리허설에서는 `version` 조회가 비어 있었고 `currentVersion`이 `1.0.20`이었습니다. 이전 `0.0.x`·preview 예제와 설정 키를 섞지 않습니다. 설치 성공만으로 앱 배포가 완료된 것은 아닙니다.
 
 ## 3. Kubernetes 구성요소 확인
 
@@ -146,11 +146,13 @@ Remove-Variable encodedPassword
 
 브라우저의 Argo CD 로그인 화면에서 사용자 이름은 **admin**, 비밀번호는 붙여넣기로 입력합니다. 이미 비밀번호를 바꿔 초기 Secret을 삭제한 재개 상황에서는 이 명령을 반복하지 않고 자신이 변경한 비밀번호로 로그인합니다. 새 Secret을 임의로 만들지 않습니다.
 
+![실제 Argo CD 로그인 화면 — 비밀번호 입력 전](images/argocd-login.png)
+
 ## 7. UI에서 비밀번호 변경
 
 1. **User Info → Update Password**를 엽니다. 버전에 따라 사용자 메뉴·동작 메뉴 안에 있을 수 있습니다.
-2. Current Password에 초기 비밀번호, New Password·Confirm New Password에 새 비밀번호를 입력하고 저장합니다.
-3. 로그아웃한 뒤 **새 비밀번호로 재로그인**해 확인합니다.
+2. Current Password에 초기 비밀번호, New Password·Confirm New Password에 새 비밀번호를 입력하고 저장합니다. 리허설 서버의 기본 규칙은 **8~32자**였습니다. 설치 환경의 정책에 맞는 고유한 비밀번호를 선택하고 오류 없이 저장됐는지 확인합니다.
+3. 로그아웃한 뒤 **https://127.0.0.1:8080**으로 다시 접속해 **새 비밀번호로 재로그인**합니다. 리허설 버전은 로그아웃 시 기본 예시 주소 `argocd.example.com`으로 이동했습니다. 이 경우 외부 주소에서 로그인하지 말고 정확한 로컬 주소를 직접 입력합니다.
 4. 확인이 끝나면 창 B에서 클립보드를 비우고 초기 Secret을 삭제합니다. 새 비밀번호는 안전한 개인 비밀번호 관리 수단에 보관합니다.
 
 **실행 — PC / PowerShell 창 B, 새 비밀번호로 재로그인한 뒤**
@@ -182,9 +184,11 @@ extension이 관리하는 Argo CD ConfigMap을 `kubectl edit`로 수정하지 �
 | 8080 포트 사용 중 | 다른 포워딩 창을 확인하고 이 실습 프로세스만 중단. 포트를 바꾸면 브라우저 주소도 함께 변경 |
 | 로컬 UI 접속이 끊김 | 창 A의 실행·절전 상태 확인. 필요하면 4~5절을 다시 수행하고 UI 재로그인 |
 | 초기 Secret 없음 | 이미 비밀번호를 변경했는지 확인. 재설치·비밀번호 초기화로 무조건 우회하지 않음 |
+| 로그아웃 후 `argocd.example.com` 접속 오류 | 기본 예시 주소로 이동한 경우 로컬 `https://127.0.0.1:8080`을 다시 입력. 예시 외부 주소에 비밀번호를 입력하지 않음 |
+| 새 비밀번호 저장 오류 | 서버의 비밀번호 규칙 확인. 리허설 기본값은 8~32자이며 저장 실패 시 초기 Secret을 삭제하지 않음 |
 
 필요한 송신 대상과 설치 조건은 [공식 튜토리얼의 Network requirements](https://learn.microsoft.com/azure/azure-arc/kubernetes/tutorial-use-gitops-argocd#network-requirements)를 확인합니다.
 
-로컬 접속과 초기 계정은 [Argo CD Getting Started](https://argo-cd.readthedocs.io/en/stable/getting_started/)를 참고합니다. UI 레이블은 실제 설치 버전에 따라 조금 다를 수 있으며, 이 문서의 브라우저 단계는 아직 실제 Azure 리허설로 검증하지 않았습니다.
+로컬 접속과 초기 계정은 [Argo CD Getting Started](https://argo-cd.readthedocs.io/en/stable/getting_started/)를 참고합니다. extension 1.0.20 / Argo CD UI v3.5.6에서 로컬 로그인·비밀번호 변경·재로그인·초기 Secret 삭제를 실제 검증했습니다. UI 레이블은 설치 버전에 따라 조금 다를 수 있습니다. Cloud Shell·대화형 클립보드 등 미검증 범위는 [README의 기록](../README.md#검증-범위와-대체-단계)을 확인합니다.
 
 [← 02 — 환경 준비](02-environment-setup.md) | [다음: 04 — 앱 배포](04-deploy-sample-app.md)

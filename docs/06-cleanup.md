@@ -63,7 +63,15 @@ AKS가 전혀 생성되지 않았다면 노드 그룹도 없을 수 있습니다
 4. **Non-Cascading / Orphan은 선택하지 않습니다.** 이 옵션은 앱만 삭제하고 Deployment·Service를 남깁니다.
 5. 확인란에 앱 이름을 입력하고 삭제를 요청합니다. 자식 리소스 정리가 끝나 Application이 목록에서 사라질 때까지 기다립니다.
 
+![실제 UI 삭제 대화상자 — 앱 이름 확인과 Foreground 선택](images/foreground-delete.png)
+
+리허설의 UI v3.5.6에서는 **Foreground** 라디오 버튼을 선택하고 `gitops-demo`를 입력한 뒤 **OK**로 확정했습니다.
+
 Foreground는 자식 정리를 기다린 후 앱을 제거합니다. 기본 5분 내 완료되지 않으면 controller·Service events와 삭제 오류를 확인하고, extension을 먼저 제거하지 않습니다.
+
+![Foreground 삭제 후 실제 Applications 빈 목록](images/applications-after-delete.png)
+
+빈 목록만으로 자식 리소스 삭제까지 단정하지 않고 아래 CLI로 부재를 함께 확인합니다.
 
 <details>
 <summary>UI 접속이 불가능할 때만: Cloud Shell의 앱 삭제 대안</summary>
@@ -217,5 +225,7 @@ GitHub Fork는 남겨도 Azure 요금이 발생하지 않습니다. 삭제하려
 | 리소스 그룹 삭제 거부 | 리소스 잠금·권한·정책 확인. 임의로 조직 보안 설정을 해제하지 않음 |
 | 노드 그룹·LB·IP 잔존 | AKS 삭제 상태와 활동 로그 확인. 비용 위험을 알리고 해결 전에는 완료로 기록하지 않음 |
 | kubeconfig 컨텍스트 없음 | AKS 생성 전에 중단했거나 이미 정리했는지 확인. 다른 컨텍스트 삭제로 대체하지 않음 |
+
+2026-11-10 실제 리허설에서는 UI foreground 삭제와 자식 부재 확인 후 전용 namespace·extension을 제거하고, 실습 그룹·기록된 관리 노드 그룹 모두 `az group exists=false`를 확인했습니다. namespace·extension·Azure 그룹 정리에 10분 36초가 걸렸습니다. 전용 로컬 자격 증명과 브라우저 세션도 제거했으며 공유 kubeconfig·기존 리소스는 삭제하지 않았습니다.
 
 [← 05 — Git 변경·자동 복구](05-gitops-update-self-heal.md) | [README로 돌아가기](../README.md)

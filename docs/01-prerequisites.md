@@ -77,7 +77,9 @@ done
 
 ## 3. 자신의 GitHub Fork 준비
 
-[원본 저장소](https://github.com/freeman9844/aks-argo-test-01)가 공개 상태인지 먼저 확인한 뒤 **Fork → Create fork**를 선택합니다. 2026-11-10 동기화 시점에는 비공개이므로 배포자의 공개 전환 전에는 진행하지 않습니다. 비공개 Fork에 토큰을 추가하는 방식은 이 실습에 포함하지 않습니다. 참고용 Application Routing 저장소를 Fork하는 것이 아닙니다.
+[원본 저장소](https://github.com/freeman9844/aks-argo-test-01)가 공개 상태인지 먼저 확인한 뒤 **Fork → Create fork**를 선택합니다. 원본은 2026-11-10 배포자 승인으로 공개 전환했습니다. 비공개 Fork에 토큰을 추가하는 방식은 이 실습에 포함하지 않습니다. 참고용 Application Routing 저장소를 Fork하는 것이 아닙니다.
+
+**개인 GitHub 계정이 필요합니다.** Enterprise Managed User(EMU)는 외부 공개 저장소의 Fork·기여가 제한됩니다. 리허설에서도 `As an Enterprise Managed User, you cannot access this content` 오류로 공개 Fork 생성이 차단됐습니다. 조직 정책을 우회하지 말고, 참가 전에 공개 Fork를 허용하는 개인 계정을 준비하세요.
 
 1. 소유자가 자신의 계정이고 공개 저장소인지 확인합니다.
 2. **Code** 화면의 브랜치 선택기에서 기본 브랜치 이름을 확인합니다. `main`이라고 가정하지 않습니다.

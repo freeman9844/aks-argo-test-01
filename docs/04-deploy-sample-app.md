@@ -42,6 +42,12 @@ Argo CD의 **Applications → + NEW APP**을 선택합니다. UI 레이블·배�
 
 Auto-Create Namespace가 보이지 않으면 Sync Options를 펼칩니다. 일반 YAML 디렉터리를 사용하므로 Helm Chart나 Kustomize 옵션을 추가하지 않습니다. 이 단계에서는 **자동 Sync·Prune·Self Heal을 아직 켜지 않습니다**.
 
+![NEW APP — Manual과 Auto-Create Namespace 선택](images/new-app-general.png)
+
+![NEW APP — Source 입력 예시](images/new-app-source.png)
+
+위 화면은 리허설 전용 저장소·브랜치입니다. 자신의 Fork·실제 브랜치로 바꾸고 **아래로 스크롤해 Destination도 표대로 입력**합니다.
+
 입력값을 다시 확인하고 **CREATE**를 선택합니다. 앱을 만들었지만 아직 첫 배포를 실행하지 않은 상태입니다. 처음에는 `OutOfSync`, 리소스가 없으면 `Missing` 등이 표시될 수 있습니다.
 
 ## 2. 첫 수동 Sync
@@ -50,6 +56,10 @@ Auto-Create Namespace가 보이지 않으면 Sync Options를 펼칩니다. 일�
 2. **SYNC → SYNCHRONIZE**를 선택합니다. 첫 배포에는 삭제할 기존 리소스가 없으므로 별도 Force·Replace·Prune 옵션을 켜지 않습니다.
 3. Sync 작업 결과와 리소스 트리를 관찰합니다. Namespace 생성 옵션이 적용되어 `workshop`에 앱이 만들어집니다.
 4. 작업 성공뿐 아니라 **Sync Status: Synced**, **Health Status: Healthy**를 모두 확인합니다.
+
+![첫 수동 Sync 후 실제 Synced·Healthy 및 Ready Pod 1개](images/first-sync-healthy.png)
+
+상단 **APP HEALTH·SYNC STATUS**를 확인합니다. 왼쪽 필터에 `Healthy`·`Synced`라는 단어가 있다는 것만으로 성공을 판정하지 않습니다. 트리 오른쪽이 잘리면 **Zoom out**으로 축소합니다.
 
 기본 5분을 기다려도 수렴하지 않으면 앱의 conditions·작업 메시지·events를 확인하고 다음 단계로 넘어가지 않습니다. 이미 UI에서 앱을 생성했으므로 참고 YAML을 별도로 적용해 중복 관리하지 않습니다.
 
@@ -66,7 +76,7 @@ Application: gitops-demo
   Service: gitops-demo
 ```
 
-Deployment 상세의 **LIVE MANIFEST** 또는 해당 버전의 리소스 상태 화면에서 `spec.replicas: 1`, `status.readyReplicas: 1`을 확인합니다. 트리에 Pod가 하나 보이는 것만으로 Ready라고 판정하지 않습니다. Pod 상세에서 Ready 상태·events·logs도 볼 수 있습니다.
+트리의 **deploy** 노드가 Deployment, **svc** 노드가 Service입니다. Deployment 상세의 **LIVE MANIFEST**에서 `spec.replicas: 1`, 아래쪽 `status.readyReplicas: 1`을 확인합니다. 코드 영역 안에서 끝까지 스크롤하거나 포커스를 두고 **Ctrl+End**를 누릅니다. 트리에 Pod가 하나 보이는 것만으로 Ready라고 판정하지 않습니다. Pod 상세에서 Ready 상태·events·logs도 볼 수 있습니다.
 
 Application의 revision을 선택해 커밋 상세 또는 연결된 GitHub 커밋을 확인합니다. UI가 축약 SHA만 보여 주면 전체 커밋 상세로 이동해 자신의 Fork·브랜치의 커밋인지 비교합니다. 과거 이력을 뜻하는 History와 현재 반영 상태를 혼동하지 않습니다.
 
@@ -112,7 +122,8 @@ kubectl get deployments,pods,services -n "$APP_NAMESPACE"
 | `ImagePullBackOff` | nginx 공개 이미지 송신·Docker Hub rate limit 확인. 사용 태그는 `nginx:1.28.3` |
 | `Healthy`가 되지 않음 | Pod events·probes·resource requests 확인. sync 성공만으로 앱 정상 판정하지 않음 |
 | IP는 있으나 HTTP 실패 | Service events·Pod Ready·EndpointSlice·네트워크 정책 확인 후 요청 재시도 |
+| 브라우저 `ERR_BLOCKED_BY_CLIENT` | 브라우저·조직의 접근 제한과 앱 장애를 구분. 보안 정책을 해제하지 말고 승인된 HTTP 클라이언트의 응답과 함께 확인. 브라우저 확인을 대체 완료로 기록하지 않음 |
 
-참고: [공식 UI 앱 생성·Sync](https://argo-cd.readthedocs.io/en/stable/getting_started/#creating-apps-via-ui). 화면 단계는 실제 Azure 리허설 전이며 버튼 위치·표기는 설치 버전과 대조해야 합니다.
+참고: [공식 UI 앱 생성·Sync](https://argo-cd.readthedocs.io/en/stable/getting_started/#creating-apps-via-ui). extension 1.0.20 / UI v3.5.6에서 NEW APP·첫 Sync·live replicas·Ready·Service IP를 실제 확인했습니다. HTTP 200은 PowerShell 클라이언트로 확인했으며, Edge의 nginx 페이지 탐색은 차단돼 미검증입니다. [전체 검증 범위](../README.md#검증-범위와-대체-단계)를 확인합니다.
 
 [← 03 — extension 설치·UI 접속](03-install-argocd-extension.md) | [다음: 05 — Git 변경·자동 복구](05-gitops-update-self-heal.md)

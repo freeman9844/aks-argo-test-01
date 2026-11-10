@@ -153,7 +153,14 @@
 
 ## 실행 기록 — 2026-11-10
 
-- Task 1~4 구현 및 정적 검증 완료. 실제 Azure 리허설인 Task 5는 별도 승인 전 보류.
+- Task 1~4 구현·정적 검증 이후, 사용자 별도 승인으로 Task 5의 실제 Azure 리허설까지 수행.
 - 최종 독립 검토에서 빈 입력 검증과 홈·kubeconfig 복구 문제를 발견해 수정.
 - 필요한 동작 회귀 검사만 `tests\test_prerequisites.py`에 추가. 표준 unittest와 Bash를 사용하며 별도 테스트 프레임워크는 추가하지 않음.
-- 회귀 검사 3개, 문서 7개 링크, 실행 Bash 블록 32개, YAML 3개 정적 검증 통과.
+- UI 전환·리허설 반영본에서 회귀 검사 3개, 문서 7개의 상대 링크·앵커 38개, Bash 30개, Windows PowerShell 5.1 구문 6개, YAML 3개 검증 통과.
+- Korea Central에 전용 AKS 1.36.5·노드 2개를 생성하고 Stable Argo CD extension 1.0.20·UI v3.5.6 설치를 확인.
+- 승인된 Playwright·Edge 브라우저로 비밀번호 변경·재로그인·NEW APP·Manual 첫 Sync·자동 정책·Git 변경 자동 반영·Self Heal·foreground 앱 삭제를 실제 수행. 앱 매니페스트를 CLI로 직접 적용하거나 자동 동기화 검증 중 수동 Sync를 실행하지 않음.
+- EMU 공개 Fork 제한으로 승인된 원본 전용 리허설 브랜치·gh 커밋을 사용. main의 초기 replicas 1은 유지하고 리허설 브랜치는 검증 근거로 보존.
+- scale 3을 단 한 번 실행해 실제 3을 관측한 뒤, 동일 Git SHA·live replicas 2·Ready 2로 복귀 확인. 최종 Deployment generation 2 → 4를 보조 조회·UI live 상태로 확인.
+- UI 삭제 후 Application·Deployment·Service·Pod 부재 확인. 전용 namespace·extension 삭제와 실습 그룹·관리 노드 그룹 모두 부재를 확인하고 포워딩·전용 로컬 자격 증명·쿠키·SSH 키 정리.
+- 준비~Azure 정리 완료 71분 27초, namespace·extension·Azure 정리 10분 36초. 참가자 기준 90분 검증과 구분.
+- Fork 생성·GitHub 웹 편집·Cloud Shell 로그인·대화형 클립보드는 미검증. nginx HTTP 200은 PowerShell로 확인했으나 Edge 공개 HTTP 탐색은 ERR_BLOCKED_BY_CLIENT로 미검증. 전체 한계와 실제 UI 이미지 8개를 README·해당 모듈에 반영.

@@ -22,7 +22,13 @@ Application의 **DETAILS → Sync Policy**에서 **ENABLE AUTO-SYNC** 또는 해
 | Prune Resources 또는 Auto-Prune | 활성화 | Git에서 제거한 관리 리소스의 자동 삭제 |
 | Self Heal | 활성화 | 클러스터의 수동 변경을 Git 상태로 복구 |
 
-버전에 따라 자동 Sync 활성화 후 별도 체크박스로 Prune·Self Heal을 켭니다. **Auto-Create Namespace는 그대로 유지**합니다. 자동 Sync만 켜고 Self Heal을 빠뜨리면 뒤의 복구 실습은 동작하지 않습니다.
+리허설의 UI v3.5.6에서는 다음 순서였습니다. **각 확인창의 OK를 누른 뒤 체크 상태가 실제 반영될 때까지 기다리고** 다음 항목으로 넘어갑니다. 빠르게 연속 변경하면 앞선 설정이 유지되지 않을 수 있으므로 마지막에 세 항목을 다시 확인합니다.
+
+1. **ENABLE AUTO-SYNC** 선택 → **Enable Auto-Sync? → OK**.
+2. 나타난 **PRUNE RESOURCES** 선택 → **Enable Prune Resources? → OK**.
+3. 아래쪽 **SELF HEAL** 선택 → **Enable Self Heal? → OK**.
+
+항목이 화면 아래에 있으면 DETAILS 패널을 더 스크롤합니다. **Auto-Create Namespace는 그대로 유지**합니다. 자동 Sync만 켜고 Self Heal을 빠뜨리면 뒤의 복구 실습은 동작하지 않습니다.
 
 Prune은 삭제 권한을 가진 설정입니다. 실습 중 Git에서 앱 파일을 지우지 않으며 Allow Empty·Force·Replace 등의 추가 옵션은 켜지 않습니다.
 
@@ -56,6 +62,10 @@ Deployment replicas = 2 / readyReplicas = 2
 ```
 
 페이지는 같은 nginx 페이지입니다. 바뀐 것은 replicas이며 이번 단계는 페이지 내용 변경 실습이 아닙니다.
+
+![수동 Sync 없이 새 Git SHA 반영 후 Synced·Healthy와 Ready Pod 2개](images/git-auto-sync-two-pods.png)
+
+리허설에서는 EMU의 공개 Fork 제한으로 승인된 격리 브랜치·`gh` 커밋을 사용했습니다. **위 화면의 브랜치를 복사하지 말고 자신의 Fork·추적 브랜치**에서 편집합니다. GitHub 웹 편집 자체는 미검증입니다.
 
 ### 지연될 때의 진단
 
@@ -94,6 +104,8 @@ kubectl scale deployment "$APP_NAME" -n "$APP_NAMESPACE" --replicas=3
 
 복구가 빨라 UI에서 순간 값 3이나 세 번째 Pod를 놓칠 수 있습니다. CLI scale 성공, 최종 live 상태 2·Ready 2, 동일 revision과 GitHub 파일의 replicas 2를 함께 확인합니다. 화면을 캡처하려고 Self Heal을 끄거나 수동 SYNC로 결과를 만들지 않습니다.
 
+![추가 Git 커밋·수동 Sync 없이 Self Heal 후 동일 SHA와 Ready Pod 2개](images/self-heal-two-pods.png)
+
 ## 문제 해결
 
 | 증상 | 확인과 대응 |
@@ -103,6 +115,6 @@ kubectl scale deployment "$APP_NAME" -n "$APP_NAMESPACE" --replicas=3
 | 3에서 복귀하지 않음 | Application의 자동 동기화·selfHeal·controller 상태 확인 |
 | Ready 수가 2가 아님 | `kubectl describe deployment`와 Pod events 확인. HPA를 추가하지 않음 |
 
-참고: [Argo CD Automated Sync Policy](https://argo-cd.readthedocs.io/en/stable/user-guide/auto_sync/). UI 레이블은 실제 설치 버전과 대조하며 자동 동기화·복구의 실제 Azure 리허설은 아직 수행하지 않았습니다.
+참고: [Argo CD Automated Sync Policy](https://argo-cd.readthedocs.io/en/stable/user-guide/auto_sync/). 실제 리허설에서 새 SHA 자동 반영·replicas·Ready 2, scale 3을 1회 실행한 뒤 동일 SHA의 2로 복귀를 검증했습니다. Prune은 활성화만 확인했고 Git 파일 삭제 실험은 하지 않았습니다. [검증 범위](../README.md#검증-범위와-대체-단계)를 확인합니다.
 
 [← 04 — 앱 배포](04-deploy-sample-app.md) | [다음: 06 — 정리](06-cleanup.md)
