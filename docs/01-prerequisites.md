@@ -78,7 +78,12 @@ fi
 read -r -p "Fork 소유자(GitHub 계정): " GITHUB_OWNER
 read -r -p "Fork 저장소 이름: " GITHUB_REPO
 read -r -p "확인한 기본 브랜치 이름: " GIT_BRANCH
-test -n "$GITHUB_OWNER" && test -n "$GITHUB_REPO" && test -n "$GIT_BRANCH"
+for name in GITHUB_OWNER GITHUB_REPO GIT_BRANCH; do
+  if [ -z "${!name}" ]; then
+    printf '필수 입력이 비어 있습니다: %s\n' "$name" >&2
+    exit 1
+  fi
+done
 export GITHUB_OWNER GITHUB_REPO GIT_BRANCH
 SUBSCRIPTION_ID="$(az account show --query id -o tsv)"
 test -n "$SUBSCRIPTION_ID"
@@ -101,6 +106,8 @@ printf 'Fork: %s / branch: %s\n' "$REPO_URL" "$GIT_BRANCH"
 
 ## 5. 새 세션에서 재개하는 경우
 
+### 5.1. 환경 파일이 있는 경우
+
 **실행**
 ```bash
 set -euo pipefail
@@ -110,7 +117,65 @@ az account show --query '{Name:name,State:state}' -o table
 printf '실습 그룹: %s / AKS: %s\n' "$RESOURCE_GROUP" "$CLUSTER"
 ```
 
-환경 파일이 사라졌다면 새 SUFFIX를 생성하지 마세요. portal의 실습 태그와 기존 AKS 이름으로 원래 값을 확인하고 4절의 변수를 **기존 이름으로** 재설정·저장합니다. 삭제 대상을 특정할 수 없다면 추측하지 말고 관리자에게 확인합니다.
+AKS가 이미 생성되어 있다면 5.3절로 kubeconfig도 복원합니다. 아직 AKS를 만들지 않았다면 02 모듈로 진행합니다.
+
+### 5.2. 환경 파일이 없는 경우
+
+**4절을 다시 실행하면 새 이름이 생성되므로 사용하지 않습니다.** portal에서 원래 구독·실습 그룹·AKS 이름을 확인한 후 다음을 실행합니다. 삭제 대상을 특정할 수 없다면 추측하지 말고 관리자에게 확인합니다.
+
+**실행 — 기존 이름만 입력**
+```bash
+set -euo pipefail
+if [ -e "$HOME/.aks-argocd-ws-env" ]; then
+  echo "환경 파일이 있습니다. 5.1절에서 복원하세요." >&2
+  exit 1
+fi
+read -r -p "기존 실습의 Azure 구독 이름: " SUBSCRIPTION_NAME
+read -r -p "기존 실습 리소스 그룹 이름: " RESOURCE_GROUP
+read -r -p "기존 실습 AKS 이름: " CLUSTER
+read -r -p "기존 Fork 소유자: " GITHUB_OWNER
+read -r -p "기존 Fork 저장소 이름: " GITHUB_REPO
+read -r -p "기존 추적 브랜치 이름: " GIT_BRANCH
+for name in SUBSCRIPTION_NAME RESOURCE_GROUP CLUSTER GITHUB_OWNER GITHUB_REPO GIT_BRANCH; do
+  if [ -z "${!name}" ]; then
+    printf '필수 입력이 비어 있습니다: %s\n' "$name" >&2
+    exit 1
+  fi
+done
+az account set --subscription "$SUBSCRIPTION_NAME"
+SUBSCRIPTION_ID="$(az account show --query id -o tsv)"
+test -n "$SUBSCRIPTION_ID"
+LOCATION="$(az group show --name "$RESOURCE_GROUP" --query location -o tsv)"
+test "$(az group show --name "$RESOURCE_GROUP" --query tags.workload -o tsv)" = aks-argocd-workshop
+test "$(az group show --name "$RESOURCE_GROUP" --query tags.environment -o tsv)" = workshop
+SUFFIX="${CLUSTER#aks-argocd-ws-}"
+EXTENSION_NAME=argocd APP_NAMESPACE=workshop APP_NAME=gitops-demo
+REPO_URL="https://github.com/$GITHUB_OWNER/$GITHUB_REPO.git"
+umask 077
+for name in SUBSCRIPTION_ID GITHUB_OWNER GITHUB_REPO GIT_BRANCH SUFFIX RESOURCE_GROUP CLUSTER LOCATION EXTENSION_NAME APP_NAMESPACE APP_NAME REPO_URL; do
+  printf 'export %s=%q\n' "$name" "${!name}"
+done > "$HOME/.aks-argocd-ws-env"
+source "$HOME/.aks-argocd-ws-env"
+printf '복원한 기존 그룹: %s / AKS: %s\n' "$RESOURCE_GROUP" "$CLUSTER"
+```
+
+이 블록은 리소스를 생성하지 않습니다. 기존 AKS가 정상이라면 5.3절을 실행하고 해당 모듈부터 재개합니다. AKS 생성에 실패했거나 아직 AKS가 없다면 이름을 새로 만들지 말고 02의 상태 확인 또는 06의 중도 종료 정리로 이동합니다.
+
+### 5.3. 기존 AKS의 kubeconfig 복원
+
+환경 변수 복원만으로는 새 세션의 kubeconfig가 생기지 않습니다. **정상 생성된 기존 AKS**에서 다음을 실행합니다. 아직 클러스터가 없다면 실행하지 않습니다.
+
+**실행**
+```bash
+az aks get-credentials --resource-group "$RESOURCE_GROUP" --name "$CLUSTER" \
+  --context "$CLUSTER"
+kubectl config use-context "$CLUSTER"
+NODE_RESOURCE_GROUP="$(az aks show --resource-group "$RESOURCE_GROUP" --name "$CLUSTER" \
+  --query nodeResourceGroup -o tsv)"
+test -n "$NODE_RESOURCE_GROUP"
+export NODE_RESOURCE_GROUP
+printf 'export NODE_RESOURCE_GROUP=%q\n' "$NODE_RESOURCE_GROUP" >> "$HOME/.aks-argocd-ws-env"
+```
 
 ## 문제 해결
 

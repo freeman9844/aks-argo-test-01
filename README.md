@@ -98,10 +98,13 @@ Cloud Shell 저장소처럼 워크샵 그룹 외부의 공유 리소스는 자�
 | 실행 Bash 블록 | Git for Windows Bash로 `bash -n` 확인 |
 | 매니페스트 3개 | PyYAML 6.0.3 파싱 확인 |
 | Application 템플릿 | 문서의 Python 렌더러로 URL·따옴표 포함 브랜치 치환 확인 |
+| 문서 실행 블록 회귀 검사 | 빈 Fork 입력 차단·기존 이름 복구·kubeconfig 재취득 3개 테스트 통과. 외부 Azure 호출은 대역 사용 |
 | nginx 이미지 | Docker Hub에서 `nginx:1.28.3` 태그 존재 확인. 실제 pull·실행 미검증 |
 | Azure·Kubernetes 실제 실행 | **미실시** — 검증된 CLI/extension/AKS 버전·소요 시간 없음 |
 
 정적 검사는 API schema 호환성·실제 extension 설치·네트워크 접근·동기화·삭제를 증명하지 않습니다. 리허설 후 실제 버전·지역·소요 시간·변경 사항을 이 표에 기록합니다.
+
+기여자는 저장소 루트에서 `python -m unittest discover -s tests -p 'test_*.py' -v`로 회귀 검사를 실행합니다. Python 표준 라이브러리와 실제 Bash가 필요하며 Azure 리소스는 생성하지 않습니다. Bash를 자동 탐색하지 못하면 `BASH_PATH` 환경 변수에 실행 파일 경로를 지정합니다.
 
 ## 참고 자료
 

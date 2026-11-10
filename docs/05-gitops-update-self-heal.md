@@ -90,13 +90,15 @@ refresh는 Git 상태를 다시 비교하도록 요청하는 것이며 앱을 �
 kubectl get deployment "$APP_NAME" -n "$APP_NAMESPACE" --watch
 ```
 
-Cloud Shell의 새 세션 기능 또는 별도 portal 탭에서 두 번째 Bash 터미널을 엽니다. 홈 파일이 공유되지 않으면 [01의 복구 절차](01-prerequisites.md#5-새-세션에서-재개하는-경우)로 원래 값을 재설정합니다. 연결 중인 클러스터 이름을 확인한 후 수동으로 변경합니다.
+Cloud Shell의 새 세션 기능 또는 별도 portal 탭에서 두 번째 Bash 터미널을 엽니다. 홈 파일이 공유되지 않으면 [01의 복구 절차](01-prerequisites.md#5-새-세션에서-재개하는-경우)로 기존 값을 복원합니다. 아래에서는 kubeconfig도 다시 취득합니다. 연결 중인 클러스터 이름을 확인한 후 수동으로 변경합니다.
 
 **실행 — 두 번째 터미널**
 ```bash
 set -euo pipefail
 source "$HOME/.aks-argocd-ws-env"
 az account set --subscription "$SUBSCRIPTION_ID"
+az aks get-credentials --resource-group "$RESOURCE_GROUP" --name "$CLUSTER" \
+  --context "$CLUSTER"
 kubectl config use-context "$CLUSTER"
 BEFORE_REVISION="$(kubectl get application "$APP_NAME" -n argocd -o jsonpath='{.status.sync.revision}')"
 test -n "$BEFORE_REVISION"
