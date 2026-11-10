@@ -57,7 +57,7 @@ done
 
 ## 3. 자신의 GitHub Fork 준비
 
-이 워크샵이 **게시된 GitHub 저장소 페이지**에서 **Fork → Create fork**를 선택합니다. 원본 URL은 배포자가 제공해야 하며, 참고용 Application Routing 저장소를 Fork하는 것이 아닙니다.
+[원본 저장소](https://github.com/freeman9844/aks-argo-test-01)가 공개 상태인지 먼저 확인한 뒤 **Fork → Create fork**를 선택합니다. 2026-11-10 동기화 시점에는 비공개이므로 배포자의 공개 전환 전에는 진행하지 않습니다. 비공개 Fork에 토큰을 추가하는 방식은 이 실습에 포함하지 않습니다. 참고용 Application Routing 저장소를 Fork하는 것이 아닙니다.
 
 1. 소유자가 자신의 계정이고 공개 저장소인지 확인합니다.
 2. **Code** 화면의 브랜치 선택기에서 기본 브랜치 이름을 확인합니다. `main`이라고 가정하지 않습니다.
