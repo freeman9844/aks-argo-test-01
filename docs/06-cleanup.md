@@ -51,26 +51,70 @@ printf '실습 그룹: %s / 노드 그룹: %s\n' "$RESOURCE_GROUP" "${NODE_RESOU
 
 AKS가 전혀 생성되지 않았다면 노드 그룹도 없을 수 있습니다. 생성 실패·삭제 중인 AKS에 노드 그룹이 남았는지 불명확하면 portal의 활동 로그·리소스 목록으로 확인합니다. 이름을 추측해 삭제하지 않습니다.
 
-## 3. 정상 경로 — controller가 동작하는 경우
+## 3. UI에서 앱 삭제 — controller가 동작하는 경우
 
-앱은 Git에서 관리되므로 Deployment·Service만 수동 삭제하면 다시 생성될 수 있습니다. 먼저 Application을 삭제합니다. 템플릿의 finalizer가 controller에 자식 리소스 정리를 요청합니다.
+앱은 Git에서 관리되므로 Deployment·Service만 수동 삭제하면 다시 생성될 수 있습니다. 먼저 Application과 자식 리소스를 함께 삭제합니다. **controller와 PC 포트포워딩을 아직 종료하지 않습니다.**
 
-**실행 — 정상 배포를 완료한 경우**
+### 3.1. Argo CD UI에서 cascading deletion
+
+1. PC 브라우저의 **https://127.0.0.1:8080 → Applications**에서 **gitops-demo**를 선택합니다.
+2. 저장소·Destination이 자신의 Fork와 `workshop`인지 확인한 뒤 **DELETE**를 선택합니다. 다른 앱이나 트리의 Pod만 삭제하지 않습니다.
+3. 삭제 대화상자에서 **Foreground / Cascading**을 선택합니다. 버전에 따라 Cascade 체크박스와 propagation policy 선택으로 나뉠 수 있습니다.
+4. **Non-Cascading / Orphan은 선택하지 않습니다.** 이 옵션은 앱만 삭제하고 Deployment·Service를 남깁니다.
+5. 확인란에 앱 이름을 입력하고 삭제를 요청합니다. 자식 리소스 정리가 끝나 Application이 목록에서 사라질 때까지 기다립니다.
+
+Foreground는 자식 정리를 기다린 후 앱을 제거합니다. 기본 5분 내 완료되지 않으면 controller·Service events와 삭제 오류를 확인하고, extension을 먼저 제거하지 않습니다.
+
+<details>
+<summary>UI 접속이 불가능할 때만: Cloud Shell의 앱 삭제 대안</summary>
+
+아직 Application 삭제를 요청하지 않았고 controller가 동작할 때만 사용합니다. UI에서 이미 삭제했다면 중복 실행하지 않습니다. finalizer가 없는 UI 생성 앱에는 foreground 정리용 finalizer를 추가합니다. 예상 밖의 finalizer가 있으면 무조건 덮어쓰지 않고 중단합니다.
+
+**실행 — Cloud Shell Bash, UI 불가 시에만**
 ```bash
 kubectl config use-context "$CLUSTER"
-kubectl get application "$APP_NAME" -n argocd -o jsonpath='{.metadata.finalizers}{"\n"}'
+finalizers="$(kubectl get application "$APP_NAME" -n argocd -o jsonpath='{.metadata.finalizers[*]}')"
+if [ -z "$finalizers" ]; then
+  kubectl patch application "$APP_NAME" -n argocd --type=merge \
+    -p '{"metadata":{"finalizers":["resources-finalizer.argocd.argoproj.io"]}}'
+elif [ "$finalizers" != resources-finalizer.argocd.argoproj.io ]; then
+  printf '예상 밖의 finalizer입니다. 확인 후 진행하세요: %s\n' "$finalizers" >&2
+  exit 1
+fi
 kubectl delete application "$APP_NAME" -n argocd --wait=true --timeout=300s
+```
+
+이미 Terminating이거나 controller가 없다면 finalizer를 강제로 제거하지 않고 아래 중도 종료 경로를 사용합니다.
+
+</details>
+
+### 3.2. Cloud Shell에서 자식 리소스 제거 확인
+
+**실행 — Cloud Shell Bash, UI·대안 삭제 후 공통**
+```bash
+kubectl config use-context "$CLUSTER"
+remaining_app="$(kubectl get application "$APP_NAME" -n argocd --ignore-not-found -o name)"
+if [ -n "$remaining_app" ]; then
+  echo "Application이 아직 남아 있습니다. 삭제 오류를 확인하세요." >&2
+  exit 1
+fi
 remaining="$(kubectl get deployments,services -n "$APP_NAMESPACE" -o name)"
 if [ -n "$remaining" ]; then
   printf '앱 리소스가 남아 있습니다:\n%s\n' "$remaining" >&2
   exit 1
 fi
+```
+
+### 3.3. 포트포워딩 중단 후 namespace·extension 정리
+
+PC의 **PowerShell 창 A에서 Ctrl+C**로 이 실습의 포트포워딩을 중단합니다. 의도적인 중단 뒤 표시되는 종료 오류는 03의 안내대로 처리합니다. 브라우저의 로컬 UI 탭도 닫습니다.
+
+**실행 — Cloud Shell Bash**
+```bash
 kubectl delete namespace "$APP_NAMESPACE" --wait=true --timeout=180s
 az k8s-extension delete --resource-group "$RESOURCE_GROUP" \
   --cluster-name "$CLUSTER" --cluster-type managedClusters --name "$EXTENSION_NAME" --yes
 ```
-
-Application 삭제가 timeout이면 extension을 먼저 제거하지 않습니다. controller·Application·Service events를 확인합니다. finalizer가 없거나 앱이 남으면 다음의 전용 그룹 전체 정리 경로로 이동합니다.
 
 ### 중도 종료 경로
 
@@ -128,9 +172,37 @@ kubectl config delete-context "$CLUSTER"
 
 kubeconfig의 사용자·클러스터 항목은 다른 컨텍스트가 참조할 수 있으므로 일괄 삭제하지 않습니다. 필요하면 `kubectl config view`에서 참조 관계를 확인한 후 이 실습 전용 항목만 수동 제거합니다. kubeconfig 내용에는 자격 증명이 있을 수 있으므로 공유하지 마세요.
 
-**실행 — 이 실습에서 생성한 세 파일만**
+로컬 PC에도 별도 kubeconfig가 있습니다. 포워딩 종료 후 창 B 또는 새 PowerShell에서 동일한 실습 이름을 확인하고 **해당 컨텍스트만** 제거합니다.
+
+**실행 — 참가자 PC / Windows PowerShell**
+```powershell
+$ErrorActionPreference = 'Stop'
+$Cluster = Read-Host '삭제 완료한 실습 AKS 이름'
+if ([string]::IsNullOrWhiteSpace($Cluster)) { throw '실습 AKS 이름이 필요합니다.' }
+kubectl config get-contexts
+if ($LASTEXITCODE -ne 0) { throw '로컬 컨텍스트 목록 조회에 실패했습니다.' }
+$contexts = @(kubectl config get-contexts -o name)
+if ($LASTEXITCODE -ne 0) { throw '로컬 컨텍스트 이름 조회에 실패했습니다.' }
+if ($contexts -contains $Cluster) {
+    kubectl config delete-context $Cluster
+    if ($LASTEXITCODE -ne 0) { throw '실습 로컬 컨텍스트 삭제에 실패했습니다.' }
+} else {
+    Write-Host '해당 실습 컨텍스트가 이미 없습니다.'
+}
+Set-Clipboard -Value ''
+```
+
+PC의 다른 컨텍스트·공유 사용자·클러스터 항목은 삭제하지 않습니다. 자격 증명이 포함될 수 있는 kubeconfig를 Git이나 메시지에 붙여넣지 않습니다.
+
+기본 UI 경로에서는 Application 임시 파일을 만들지 않습니다. 이전 CLI 버전에서 만들었다면 해당 실습 이름의 두 파일만 제거합니다.
+
+**실행 — Cloud Shell Bash, 이전 CLI 버전 사용자만**
 ```bash
 rm -f -- "$HOME/$CLUSTER-application.template.yaml" "$HOME/$CLUSTER-application.yaml"
+```
+
+**실행 — Cloud Shell Bash, 환경 파일 정리**
+```bash
 rm -- "$HOME/.aks-argocd-ws-env"
 ```
 
@@ -141,6 +213,7 @@ GitHub Fork는 남겨도 Azure 요금이 발생하지 않습니다. 삭제하려
 | 증상 | 확인과 대응 |
 |---|---|
 | Application `Terminating` | controller가 실행 중인지 확인. 이미 제거됐다면 전용 Azure 그룹 전체 삭제 경로 사용 |
+| 앱은 사라졌지만 Service·Deployment가 남음 | Orphan 삭제 여부 확인. 정리 완료로 보지 말고 전용 그룹 전체 삭제 경로로 이동 |
 | 리소스 그룹 삭제 거부 | 리소스 잠금·권한·정책 확인. 임의로 조직 보안 설정을 해제하지 않음 |
 | 노드 그룹·LB·IP 잔존 | AKS 삭제 상태와 활동 로그 확인. 비용 위험을 알리고 해결 전에는 완료로 기록하지 않음 |
 | kubeconfig 컨텍스트 없음 | AKS 생성 전에 중단했거나 이미 정리했는지 확인. 다른 컨텍스트 삭제로 대체하지 않음 |
