@@ -67,7 +67,7 @@
 - 문서 코드 펜스: 실행할 셸 명령은 `bash`, 설명·예상 출력은 `text`, 매니페스트는 `yaml`. 파일 시스템 경로는 실행 환경에 맞춘다. 참가자용 Bash 경로를 Windows 경로로 바꾸지 않는다.
 - 각 모듈은 실행·개념 예시·예상 출력 범례, 소요 시간, 성공 조건, 관련 문제 해결, 이전·다음 링크를 제공한다.
 
-### 작업 1: Azure 초급자를 위한 환경 준비 경로
+### Task 1: Azure 초급자를 위한 환경 준비 경로
 
 **Files:** 생성 `docs\01-prerequisites.md`, `docs\02-environment-setup.md`.
 
@@ -80,7 +80,7 @@
 - [ ] **5. 새 세션 시나리오를 점검한다.** 환경 파일이 있으면 복원 후 구독·클러스터를 재확인하고, 파일이 없으면 기존 이름을 입력해 재설정한다. 복원 중 새 SUFFIX를 생성하거나 기존 리소스 그룹을 자동 삭제하지 않아야 한다.
 - [ ] **6. 문서 검사를 실행하고 커밋한다.** `git diff --check`가 출력 없이 성공해야 한다. 실제 Azure 실행 여부는 별도 기록하며, 커밋 메시지는 `docs: add Azure prerequisites and AKS setup`으로 한다.
 
-### 작업 2: extension과 단일 GitOps 애플리케이션
+### Task 2: extension과 단일 GitOps 애플리케이션
 
 **Files:** 생성 `docs\03-install-argocd-extension.md`, `docs\04-deploy-sample-app.md`, `manifests\app\deployment.yaml`, `manifests\app\service.yaml`, `manifests\argocd\application.yaml`.
 
@@ -94,7 +94,7 @@
 - [ ] **6. Fork와 잘못된 입력 시나리오를 점검한다.** 원본 저장소 URL, 존재하지 않는 브랜치·경로, 치환되지 않은 자리표시자에 대해 확인 명령과 수정 위치가 있어야 한다. `kubectl apply -f manifests/app`로 실패를 우회하지 않아야 한다.
 - [ ] **7. 정적 검사 후 커밋한다.** YAML 문법 검사와 `git diff --check`를 실행한다. YAML 파서는 `python -c "import yaml"`로 가용성을 확인하고, 없을 때만 세션 작업 공간의 임시 가상 환경에 PyYAML을 설치한다. 실제 클러스터가 없다면 schema·동기화·HTTP 검증은 미실시로 남긴다. 커밋 메시지는 `feat: add managed Argo CD sample deployment`로 한다.
 
-### 작업 3: Git 변경·자동 복구·안전한 정리
+### Task 3: Git 변경·자동 복구·안전한 정리
 
 **Files:** 생성 `docs\05-gitops-update-self-heal.md`, `docs\06-cleanup.md`.
 
@@ -107,7 +107,7 @@
 - [ ] **5. 중도 종료 시나리오를 작성한다.** extension 설치 전 실패, 앱 배포 중 실패, controller가 이미 삭제되어 finalizer가 멈춘 경우를 다룬다. 전용 그룹이 맞는지 확인한 뒤 그룹 전체 삭제로 정리하는 경로를 제공한다. 무조건적인 finalizer 제거·노드 리소스 그룹 선삭제·다른 kubeconfig 삭제는 하지 않는다.
 - [ ] **6. 정리 완료 조건을 점검하고 커밋한다.** 기록된 실습 그룹과 노드 그룹 부재 확인, 해당 실습 환경 파일·kubeconfig 항목만 제거, GitHub Fork 보관 또는 웹 삭제 안내가 있어야 한다. `git diff --check` 후 `docs: add GitOps update self-heal and cleanup labs`로 커밋한다.
 
-### 작업 4: README 통합과 전체 정적 검증
+### Task 4: README 통합과 전체 정적 검증
 
 **Files:** 생성 `README.md`; 필요 시 이전 작업의 문서·매니페스트 수정.
 
@@ -121,7 +121,7 @@
 - [ ] **6. 전체 안내를 순서대로 읽어 교차 검증한다.** 변수·리소스 이름·namespace·Git branch·앱 path·정리 순서가 공통 인터페이스와 일치해야 한다. `git diff --check`를 실행하고 임시 검사 파일을 정리한다.
 - [ ] **7. 검증 상태를 명시하고 커밋한다.** 실제 실행 전에는 README에 정적 검증 결과와 Azure 리허설 미실시를 구분한다. `docs: complete workshop navigation and validation notes`로 커밋한다.
 
-### 작업 5: 별도 승인 후 실제 Azure 리허설
+### Task 5: 별도 승인 후 실제 Azure 리허설
 
 **Files:** `README.md`와 관련 모듈의 검증 상태·관측 결과만 수정.
 
