@@ -105,6 +105,7 @@ Cloud Shell 저장소처럼 워크샵 그룹 외부의 공유 리소스는 자�
 | 문서 상대 링크·모듈 연결 | 확인 |
 | 실행 Bash 블록 | Git for Windows Bash로 `bash -n` 확인 |
 | 로컬 PowerShell 블록 | PowerShell Parser로 구문 확인. 실제 Azure·kubectl 호출 미실시 |
+| 로컬 CLI 사전 점검 | 문서의 `az version` 명령을 Windows PowerShell 5.1에서 실제 실행 확인. 클라우드 리소스 작업과 별개 |
 | 매니페스트 3개 | PyYAML 6.0.3 파싱 확인 |
 | Application 참고 YAML | 문법 파싱 확인. 기본 UI 흐름에서 렌더링·CLI 적용하지 않음 |
 | 문서 실행 블록 회귀 검사 | 빈 Fork 입력 차단·기존 이름 복구·kubeconfig 재취득 3개 테스트 통과. 외부 Azure 호출은 대역 사용 |

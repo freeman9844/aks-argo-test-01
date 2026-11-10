@@ -20,7 +20,7 @@ Azure 리소스 작업은 **Cloud Shell Bash**, Argo CD UI 접속은 **참가자
 **실행 — 참가자 PC / Windows PowerShell**
 ```powershell
 $ErrorActionPreference = 'Stop'
-az version --query '"azure-cli"' -o tsv
+az version --output table
 if ($LASTEXITCODE -ne 0) { throw '로컬 Azure CLI를 확인하세요.' }
 kubectl version --client
 if ($LASTEXITCODE -ne 0) { throw '로컬 kubectl을 확인하세요.' }
