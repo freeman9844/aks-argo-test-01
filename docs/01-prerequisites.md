@@ -2,11 +2,31 @@
 
 > **실행**: 직접 입력합니다. **개념**: 읽기만 합니다. **예상 출력**: 실제 결과와 비교하며 입력하지 않습니다.
 
-예상 소요 시간: 10분. 공급자 등록·권한 부여는 행사 전에 완료하는 것을 권장합니다.
+예상 소요 시간: 10분. 로컬 도구 설치·공급자 등록·권한 부여는 행사 전에 완료하며, 설치 시간은 90분 실습 목표에 포함하지 않습니다.
 
 ## 성공 조건
 
-올바른 Azure 구독, 필요한 권한·공급자 등록, Cloud Shell 도구, 자신의 공개 Fork와 기본 브랜치를 확인합니다.
+올바른 Azure 구독, 필요한 권한·공급자 등록, Cloud Shell 및 로컬 도구, 자신의 공개 Fork와 기본 브랜치를 확인합니다.
+
+## 0. 참가자 PC의 로컬 도구 — 사전 설치
+
+Azure 리소스 작업은 **Cloud Shell Bash**, Argo CD UI 접속은 **참가자 PC의 Windows PowerShell**을 사용합니다. 두 환경은 로그인·환경변수·kubeconfig가 별개입니다. Cloud Shell의 환경 파일을 PC에서 source하거나 비밀번호·kubeconfig를 복사하지 않습니다.
+
+- [Windows용 Azure CLI 설치](https://learn.microsoft.com/cli/azure/install-azure-cli-windows)
+- [Windows용 kubectl 설치](https://kubernetes.io/docs/tasks/tools/install-kubectl-windows/)
+
+설치 후 PC에서 새 PowerShell 창을 열고 확인합니다. macOS·Linux 사용자는 해당 OS의 공식 설치 안내를 따르며 아래 PowerShell 명령을 그대로 실행하지 않습니다.
+
+**실행 — 참가자 PC / Windows PowerShell**
+```powershell
+$ErrorActionPreference = 'Stop'
+az version --query '"azure-cli"' -o tsv
+if ($LASTEXITCODE -ne 0) { throw '로컬 Azure CLI를 확인하세요.' }
+kubectl version --client
+if ($LASTEXITCODE -ne 0) { throw '로컬 kubectl을 확인하세요.' }
+```
+
+PC에서 공개 AKS API에 접근할 수 있어야 합니다. 회사 VPN·프록시·방화벽·도구 설치 정책을 미리 확인하세요. 로컬 준비가 안 되었다고 관리 화면을 공개 LoadBalancer로 바꾸거나 TLS를 끄지 않습니다.
 
 ## 1. Cloud Shell과 구독
 

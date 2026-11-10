@@ -79,6 +79,18 @@ aks-nodepool1-example-vmss000001 Ready    <none>   3m    vX.Y.Z
 
 노드 리소스 그룹(`MC_...`)에는 AKS가 관리하는 VM·디스크·네트워크 리소스가 있습니다. 직접 먼저 삭제하지 않습니다.
 
+## 4. 로컬 UI 접속을 위한 대상 이름 확인
+
+다음 모듈에서 **참가자 PC**에 입력할 값입니다. 비밀번호·토큰·kubeconfig가 아니라 기존 리소스의 이름만 확인합니다.
+
+**실행 — Cloud Shell Bash**
+```bash
+az account show --query name -o tsv
+printf '리소스 그룹: %s\nAKS 이름: %s\n' "$RESOURCE_GROUP" "$CLUSTER"
+```
+
+PC에서는 별도로 Azure에 로그인하고 이 클러스터의 자격 증명을 취득합니다. Cloud Shell에서 포워딩한 localhost를 PC의 localhost로 열 수는 없습니다.
+
 ## 문제 해결
 
 | 증상 | 확인과 대응 |
