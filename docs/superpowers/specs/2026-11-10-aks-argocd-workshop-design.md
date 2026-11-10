@@ -1,5 +1,7 @@
 # AKS Argo CD extension GitOps 핸즈온 워크샵 설계
 
+> **초기 설계 기록:** 아래 본문은 처음 승인한 CLI 중심 설계입니다. 이후 승인된 [UI 중심 변경 설계](2026-11-10-aks-argocd-ui-workshop-design.md)가 설치 이후 동작에 우선합니다. 현재는 PC 로컬 포워딩·UI 로그인·NEW APP·첫 Manual Sync·자동 정책·UI 관찰·foreground cascading 삭제를 사용합니다. 아래의 CLI 부트스트랩, UI 미사용, 터미널 watch 설명은 과거 결정으로 보존하며 현재 실습 지침이 아닙니다. 실제 참가자 경로는 [README](../../../README.md)와 번호별 모듈입니다.
+
 작성일: 2026-11-10
 
 상태: 사용자 승인 완료 (2026-11-10)

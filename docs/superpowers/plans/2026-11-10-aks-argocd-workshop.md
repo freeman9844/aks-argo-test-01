@@ -1,5 +1,7 @@
 # AKS Argo CD extension 워크샵 구현 계획 (Implementation Plan)
 
+> **초기 구현 계획 기록:** 이 문서의 CLI 중심 구현은 완료된 과거 작업입니다. 후속 [UI 중심 구현 계획](2026-11-10-aks-argocd-ui-workshop.md)과 [승인 UI 설계](../specs/2026-11-10-aks-argocd-ui-workshop-design.md)가 설치 이후 경로를 대체합니다. 현재 기본 흐름은 로컬 UI 접속 → NEW APP → 첫 Manual Sync → 자동 정책 → UI 관찰·삭제입니다. 아래 Python 렌더링·CLI Application 적용·UI 제외·터미널 watch 항목은 다시 실행할 작업이 아니며, 참가자는 [README](../../../README.md)와 번호별 모듈을 따릅니다. 실제 Azure 리허설은 여전히 별도 승인 전 보류입니다.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Kubernetes 지식이 있는 Azure 초급자가 약 90분 동안 AKS Argo CD extension 설치, 자신의 공개 GitHub Fork 기반 앱 배포·변경·자동 복구·정리를 체험하는 한국어 워크샵을 만든다.
