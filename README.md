@@ -1,16 +1,31 @@
-# AKS Argo CD extension GitOps 핸즈온 워크샵
+# 처음 시작하는 AKS GitOps: Argo CD extension 워크숍
 
-Kubernetes는 알지만 Azure는 처음인 사용자를 위한 **약 90분** 실습입니다. 새 AKS에 **Microsoft.ArgoCD extension**을 설치하고, **Argo CD UI에서** 자신의 공개 GitHub Fork를 연결해 nginx 샘플 앱을 배포합니다. GitHub 웹 편집으로 replicas를 바꾸고 UI에서 자동 동기화·수동 변경 자동 복구를 확인합니다.
+> Kubernetes는 알지만 Azure는 처음인 참가자를 위한 한국어 핸즈온입니다. **전체 목표 시간 90분** 동안 새 AKS에 Microsoft.ArgoCD extension을 설치하고, Argo CD UI로 nginx를 배포합니다. Git 변경의 자동 반영과 수동 변경의 자동 복구를 확인한 뒤 안전하게 정리합니다.
 
-Azure 리소스 생성·extension 설치·Azure 정리는 **Cloud Shell Bash**, 앱 생성·첫 Sync·자동 정책·상태 확인·앱 삭제는 **Argo CD UI**, Git 변경은 **GitHub 웹**에서 수행합니다. UI는 참가자 PC의 **Windows PowerShell 로컬 포트포워딩**으로 접속합니다. 로컬 Azure CLI·kubectl 설치는 **실습 전 준비**이며 이미지 빌드·GitHub 쓰기 토큰은 필요하지 않습니다.
+**처음이라면 [01. 실습 준비](docs/01-prerequisites.md)부터 시작하세요.** 로컬 Azure CLI·kubectl 설치는 실습 전에 준비합니다. 이미지 빌드·GitHub 쓰기 토큰은 필요하지 않습니다.
 
 > **검증 상태:** 2026-11-10 실제 AKS에서 extension 설치, 로컬 Argo CD UI 로그인·앱 생성·첫 Sync·자동 정책·Git 변경 반영·Self Heal·foreground 앱 삭제와 **Azure 전용 그룹·관리 노드 그룹 삭제 완료**를 검증했습니다. 실제 화면과 환경·대체 단계는 아래 [검증 기록](#검증-기록)을 확인하세요. **참가자 기준 90분 완료를 실측한 것은 아닙니다.**
 >
-> **원본 저장소:** [freeman9844/aks-argo-test-01](https://github.com/freeman9844/aks-argo-test-01). 아래 참고용 Application Routing 저장소가 Fork 대상은 아닙니다.
+> **원본 저장소:** [freeman9844/aks-argo-test-01](https://github.com/freeman9844/aks-argo-test-01). 형식 참고용 Landing Zone·Application Routing 저장소는 Fork 대상이 아닙니다.
 >
 > **공개 저장소:** 2026-11-10 배포자 승인으로 원본을 **공개 전환**했고 익명 Git 읽기를 확인했습니다. 참가자는 공개 저장소를 Fork할 수 있는 **개인 GitHub 계정**을 준비하세요. Enterprise Managed User(EMU)는 기업 외부 공개 저장소의 Fork·기여가 제한될 수 있습니다.
 
-## 학습 목표
+## 실습을 진행하는 방법
+
+각 단계는 **👁️ 설명 → 🟢 실행 → 📋 확인** 순서로 읽습니다. 먼저 목적을 이해하고, 표시된 환경에서 한 단계씩 실행한 뒤 실제 결과를 확인합니다. 비용·비밀번호·삭제·실패 복구 조건은 **⚠️ 주의**로 구분합니다.
+
+| 실행 위치 | 수행할 작업 |
+|---|---|
+| Cloud Shell **Bash** | Azure 리소스 생성·extension 설치·drift 생성 1회·Azure 정리 |
+| 참가자 PC의 **Windows PowerShell** | AKS 연결·로컬 포트포워딩·초기 비밀번호 취득 |
+| PC 브라우저의 **Argo CD UI** | 로그인·앱 생성·첫 Sync·자동 정책·상태 확인·앱 삭제 |
+| **GitHub 웹** | 자신의 공개 Fork에서 replicas 수정·커밋 |
+
+코드 블록은 실행 위치를 확인한 뒤 하나씩 입력합니다. UI 단계는 브라우저에서 수행하며, **예상 출력·구조 예시·참고 YAML은 터미널에 입력하지 않습니다.** 오류가 나면 다음 단계로 넘어가지 말고 해당 모듈의 트러블슈팅을 확인합니다. 중간에 그만두더라도 마지막 정리는 반드시 진행합니다.
+
+처음 보는 Bash 문법은 [실행 블록 읽는 법](docs/01-prerequisites.md#실행-블록-읽는-법)을 먼저 확인하세요. Cloud Shell과 PC는 변수·로그인·kubeconfig를 공유하지 않습니다.
+
+## 무엇을 배우나요?
 
 1. Cloud Shell에서 구독·권한을 확인하고 실습 전용 리소스 그룹·AKS를 생성합니다.
 2. Helm 직접 설치 대신 Azure 클러스터 extension으로 Argo CD를 설치하고 로컬 UI에 로그인합니다.
@@ -19,9 +34,14 @@ Azure 리소스 생성·extension 설치·Azure 정리는 **Cloud Shell Bash**, 
 5. 수동으로 replicas를 3으로 바꾼 뒤 Git의 값 2로 복귀하는 self-heal을 관찰합니다.
 6. UI에서 앱과 자식 리소스를 삭제한 뒤 Azure 실습 그룹과 관리 노드 그룹의 삭제 완료를 확인합니다.
 
-## 아키텍처
+**모듈 01–06을 순서대로 진행하는 하나의 과정**입니다. 설치 이후의 앱 작업은 UI를 중심으로 진행하며, Azure 리소스 정리까지 포함합니다.
 
-**개념 — 실행할 명령이 아닙니다**
+## 구성 개요: GitOps와 로컬 관리 화면
+
+👁️ **설명**
+
+아래는 앱 배포 후의 구성입니다. 그림은 구조 설명이며 실행 명령이 아닙니다.
+
 ```mermaid
 flowchart LR
   person["참가자"] -->|"웹 편집·커밋"| git["자신의 공개 GitHub Fork"]
@@ -63,23 +83,21 @@ Git이 원하는 상태의 기준입니다. GitHub에서 AKS로 push하는 CI �
 
 기존 운영 클러스터·사설망 전용 환경은 사용하지 않습니다. Argo CD UI 로그인·초기 비밀번호 변경은 포함하지만 관리 화면 외부 공개·도메인·인증서 발급·Entra SSO·ACR·비공개 Git·ApplicationSet·CI는 범위 밖입니다.
 
-## 모듈과 시간표
+## 모듈 목차
 
-| 모듈 | 내용 | 목표 시간 |
-|---|---|---|
-| [01 — 사전 준비](docs/01-prerequisites.md) | Cloud Shell·구독·권한·공급자·Fork·변수 | 10분 |
-| [02 — 환경 준비](docs/02-environment-setup.md) | 전용 리소스 그룹·AKS·kubectl 연결 | 20분 |
-| [03 — extension 설치·UI 접속](docs/03-install-argocd-extension.md) | 비HA 설치·PC 포워딩·로그인·비밀번호 변경 | 15분 |
-| [04 — UI 앱 배포](docs/04-deploy-sample-app.md) | NEW APP·첫 수동 Sync·리소스 트리·HTTP 확인 | 15분 |
-| [05 — Git 변경·자동 복구](docs/05-gitops-update-self-heal.md) | 자동 정책 활성화·웹 커밋·UI revision·self-heal 확인 | 20분 |
-| [06 — 정리](docs/06-cleanup.md) | UI cascading 삭제·포워딩 종료·Azure 삭제 완료 확인 | 10분 |
-| **합계** | 생성·삭제 대기를 포함한 설계 목표, 실측 아님 | **90분** |
+| # | 모듈 | 완료하면 할 수 있는 일 | 목표 시간 |
+|---|---|---|---:|
+| 01 | [실습 준비](docs/01-prerequisites.md) | 구독·권한·공급자·Fork를 확인하고 변수를 복원 | 10분 |
+| 02 | [AKS 환경 준비](docs/02-environment-setup.md) | 전용 리소스 그룹·AKS를 만들고 노드 Ready 확인 | 20분 |
+| 03 | [extension 설치·UI 접속](docs/03-install-argocd-extension.md) | 비HA 설치·PC 포워딩·로그인·초기 비밀번호 변경 | 15분 |
+| 04 | [UI 앱 배포](docs/04-deploy-sample-app.md) | NEW APP·첫 수동 Sync·리소스 트리·HTTP 확인 | 15분 |
+| 05 | [Git 변경·자동 복구](docs/05-gitops-update-self-heal.md) | 자동 정책을 켜고 Git SHA·Ready·Self Heal 비교 | 20분 |
+| 06 | [정리](docs/06-cleanup.md) | UI cascading 삭제와 Azure 두 그룹의 삭제 완료 확인 | 10분 |
+| | **전체 합계** | 생성·삭제 대기를 포함한 설계 목표, 실측 아님 | **90분** |
 
 로컬 Azure CLI·kubectl 설치와 공급자 등록·권한 부여는 행사 전에 완료합니다. 설치 시간은 위 90분에 포함하지 않습니다. SKU 용량·송신 제한·프로비저닝 지연에 따라 더 걸릴 수 있습니다.
 
-각 모듈에서 **실행** 블록은 표시된 Cloud Shell Bash 또는 PC PowerShell에서, UI 단계는 브라우저에서 수행합니다. **개념**·**예상 출력**은 입력하지 않습니다. 새 Cloud Shell 세션은 [변수 복원](docs/01-prerequisites.md#5-새-세션에서-재개하는-경우), PC 재접속은 [03의 로컬 접속](docs/03-install-argocd-extension.md) 절차를 따릅니다. 두 환경은 변수·로그인·kubeconfig를 공유하지 않습니다.
-
-## 비용과 안전
+## 비용과 정리
 
 | 리소스 | 실습 구성·과금 요소 |
 |---|---|
@@ -89,13 +107,41 @@ Git이 원하는 상태의 기준입니다. GitHub에서 AKS로 push하는 CI �
 | 네트워크 | 아웃바운드 전송량·기타 실제 사용량 |
 | Cloud Shell 스토리지 | 영구 홈 저장소를 선택했다면 별도 리소스·비용이 있을 수 있음 |
 
+⚠️ **주의**
+
 AKS **Free 요금제는 인프라 전체 무료가 아닙니다**. 2026-11-10 리허설 전 Azure Retail 가격 조회에서 Korea Central Linux `Standard_D2s_v5`는 대당 **USD 0.118/시간**, 2대 합계 **USD 0.236/시간**이었습니다. 디스크·Load Balancer·IP·네트워크·세금은 별도이며 실제 청구액이나 고정 비용을 보장하지 않습니다. 실습 직전 [Azure Pricing Calculator](https://azure.microsoft.com/pricing/calculator/)에서 다시 산정하세요.
 
-워크샵 그룹에는 `workload=aks-argocd-workshop`, `environment=workshop` 태그를 붙입니다. `MC_...` 노드 그룹은 AKS가 관리하므로 직접 먼저 삭제하지 않습니다.
+워크숍 그룹에는 `workload=aks-argocd-workshop`, `environment=workshop` 태그를 붙입니다. `MC_...` 노드 그룹은 AKS가 관리하므로 직접 먼저 삭제하지 않습니다.
 
-공개 HTTP 앱에는 비밀·개인정보를 넣지 않습니다. 학습용 비HA·공개 API·기본 사용자 자격 증명 구성은 운영 권장 구성이 아닙니다. 실습을 중단해도 반드시 **06 — 정리**를 진행하세요. 삭제 명령 성공과 삭제 완료는 다릅니다.
+공개 HTTP 앱에는 비밀·개인정보를 넣지 않습니다. 학습용 비HA·공개 API·기본 사용자 자격 증명 구성은 운영 권장 구성이 아닙니다. **완료·실패 여부와 관계없이 [06. 정리](docs/06-cleanup.md)를 진행하세요.** 삭제 명령 성공과 삭제 완료는 다릅니다.
 
-Cloud Shell 저장소처럼 워크샵 그룹 외부의 공유 리소스는 자동으로 삭제하지 않습니다. 따로 만든 경우 소유 범위·다른 사용 여부를 확인한 후 정리합니다.
+Cloud Shell 저장소처럼 워크숍 그룹 외부의 공유 리소스는 자동으로 삭제하지 않습니다. 따로 만든 경우 소유 범위·다른 사용 여부를 확인한 후 정리합니다.
+
+## 세션이 끊겼을 때
+
+Cloud Shell의 변수는 새 세션에 남지 않습니다. [변수 복원](docs/01-prerequisites.md#5-새-세션에서-재개하는-경우)으로 `$HOME/.aks-argocd-ws-env`를 읽고 **기존 실습의 이름**을 사용합니다. 파일이 없다면 같은 절의 복구 안내를 따르며 새 이름을 만들지 않습니다. 환경 파일·kubeconfig·비밀번호는 Git에 올리지 않습니다.
+
+PC의 포워딩이 끊겼다면 [03의 로컬 접속](docs/03-install-argocd-extension.md) 절차로 다시 연결합니다. Cloud Shell과 PC의 localhost는 서로 다릅니다. 이미 생성된 자원은 상태를 확인한 후 이어서 진행하고, 실패한 생성 명령을 무작정 반복하지 않습니다.
+
+## 태깅 범례와 트러블슈팅
+
+| 표시 | 읽는 방법 |
+|---|---|
+| 👁️ **설명** | 작업의 목적과 리소스 관계를 먼저 이해합니다. |
+| 🟢 **실행** | 표시된 터미널에서 명령을 입력하거나 브라우저에서 UI 단계를 수행합니다. |
+| 📋 **확인** | 실제 이름·값·상태를 완료 기준과 비교합니다. 출력 예시를 실행하지 않습니다. |
+| ⚠️ **주의** | 보안·비용·삭제·재개 조건을 확인한 뒤 진행합니다. |
+
+표시는 본문과 분리된 줄로 배치합니다. 출력 예시와 스크린샷은 비교 자료이며 자신의 실제 결과를 대신하지 않습니다. 각 모듈 끝의 **완료 체크**를 확인하고 다음 모듈로 이동합니다.
+
+| 증상 | 이동 |
+|---|---|
+| 권한·공급자·Fork·환경 파일 | [실습 준비](docs/01-prerequisites.md#트러블슈팅) |
+| SKU·쿼터·AKS·노드 Ready | [AKS 환경 준비](docs/02-environment-setup.md#트러블슈팅) |
+| extension·로컬 포워딩·로그인 | [extension 설치·UI 접속](docs/03-install-argocd-extension.md#트러블슈팅) |
+| 첫 Sync·Pod·Service IP·HTTP | [UI 앱 배포](docs/04-deploy-sample-app.md#트러블슈팅) |
+| 새 SHA·자동 동기화·Self Heal | [Git 변경·자동 복구](docs/05-gitops-update-self-heal.md#트러블슈팅) |
+| 중도 실패·앱 삭제·Azure 삭제 지연 | [정리](docs/06-cleanup.md#트러블슈팅) |
 
 ## 검증 기록
 
@@ -142,7 +188,8 @@ AKS 생성·자격 증명 취득은 **4분 18초**, extension 설치는 **6분 2
 
 ## 참고 자료
 
-- [참고 워크샵의 문서 형식](https://github.com/freeman9844/ms-aks-approuting-workshop01)
+- [교재 진행 형식 참고](https://github.com/freeman9844/ms-landing-zone-02)
+- [최초 기획 참고 워크숍](https://github.com/freeman9844/ms-aks-approuting-workshop01)
 - [AKS Argo CD extension GA 발표](https://techcommunity.microsoft.com/blog/azurearcblog/gitops-with-argo-cd-extension-for-aks-is-now-generally-available/4562231)
 - [공식 설치·배포 튜토리얼](https://learn.microsoft.com/azure/azure-arc/kubernetes/tutorial-use-gitops-argocd)
 - [Argo CD extension 개념](https://learn.microsoft.com/azure/azure-arc/kubernetes/conceptual-gitops-argocd)

@@ -1,16 +1,21 @@
-# 03 — Argo CD extension 설치와 로컬 UI 접속
+# 03. Argo CD extension 설치와 로컬 UI 접속
 
-> **실행**: 직접 입력합니다. **개념**: 읽기만 합니다. **예상 출력**: 비교용입니다.
+> 목표 시간 15분. extension 설치 후 PC의 로컬 HTTPS로 UI에 로그인하고 초기 비밀번호를 바꿉니다. 설치·로그인 대기가 길면 더 걸릴 수 있으며 로컬 도구는 사전에 준비합니다.
 
-예상 소요 시간: 15분 목표. 설치·로그인 대기가 길면 더 걸릴 수 있습니다. 로컬 도구 설치는 사전 준비입니다.
-
-## 성공 조건
+## 목표
 
 Azure extension이 `Succeeded`, Argo CD Deployment·StatefulSet이 준비 완료입니다. 참가자 PC의 로컬 HTTPS로 UI에 로그인하고 초기 비밀번호를 변경합니다. 관리 화면은 외부에 공개하지 않습니다.
 
 ## 0. 작업 대상 복원
 
-**실행**
+👁️ **설명**
+
+앞 모듈의 구독·컨텍스트를 다시 확인하고 이번 실습용 AKS에만 설치합니다.
+
+🟢 **실행**
+
+**실행 위치: Cloud Shell Bash**
+
 ```bash
 set -euo pipefail
 source "$HOME/.aks-argocd-ws-env"
@@ -20,13 +25,20 @@ az aks show -g "$RESOURCE_GROUP" -n "$CLUSTER" --query '{State:provisioningState
 kubectl get nodes
 ```
 
-관리 ID 기반 AKS가 필요합니다. 앞 모듈의 새 클러스터를 사용하며, 기존 운영 클러스터에 적용하지 않습니다.
+📋 **확인**
+
+AKS가 `Succeeded`이고 관리 ID를 사용하며 노드가 Ready인지 확인합니다. 앞 모듈의 새 클러스터를 사용하며, 기존 운영 클러스터에 적용하지 않습니다.
 
 ## 1. Azure CLI extension 준비
 
+👁️ **설명**
+
 `Microsoft.ArgoCD`는 AKS에 설치되는 **클러스터 extension**, `k8s-extension`은 이를 관리하는 **Azure CLI 확장 패키지**입니다.
 
-**실행**
+🟢 **실행**
+
+**실행 위치: Cloud Shell Bash**
+
 ```bash
 installed_extensions="$(az extension list --query '[].name' -o tsv)"
 if grep -Fxq k8s-extension <<< "$installed_extensions"; then
@@ -37,11 +49,20 @@ fi
 az extension show --name k8s-extension --query '{Name:name,Version:version}' -o table
 ```
 
+📋 **확인**
+
+CLI 확장 패키지 이름 `k8s-extension`과 설치 버전이 표시돼야 합니다.
+
 ## 2. 비HA 설치
+
+👁️ **설명**
 
 [공식 튜토리얼](https://learn.microsoft.com/azure/azure-arc/kubernetes/tutorial-use-gitops-argocd)에 따르면 기본 Redis HA 구성은 노드 4개가 필요합니다. 이 실습은 비용·구성을 줄이기 위해 `redis-ha.enabled=false`를 명시합니다. 운영 환경에서는 별도의 HA·용량·보안 설계가 필요합니다.
 
-**실행**
+🟢 **실행**
+
+**실행 위치: Cloud Shell Bash**
+
 ```bash
 az k8s-extension create --resource-group "$RESOURCE_GROUP" \
   --cluster-name "$CLUSTER" --cluster-type managedClusters \
@@ -55,11 +76,20 @@ test "$(az k8s-extension show -g "$RESOURCE_GROUP" --cluster-name "$CLUSTER" \
   --cluster-type managedClusters -n "$EXTENSION_NAME" --query provisioningState -o tsv)" = Succeeded
 ```
 
-GA용 기본 release train을 사용합니다. 출력된 실제 extension 버전을 기록하세요. 실행 중 버전은 `currentVersion`입니다. 리허설에서는 `version` 조회가 비어 있었고 `currentVersion`이 `1.0.20`이었습니다. 이전 `0.0.x`·preview 예제와 설정 키를 섞지 않습니다. 설치 성공만으로 앱 배포가 완료된 것은 아닙니다.
+📋 **확인**
+
+상태가 `Succeeded`인지 확인합니다. GA용 기본 release train을 사용하며, 출력된 실제 extension 버전을 기록하세요. 실행 중 버전은 `currentVersion`입니다. 리허설에서는 `version` 조회가 비어 있었고 `currentVersion`이 `1.0.20`이었습니다. 이전 `0.0.x`·preview 예제와 설정 키를 섞지 않습니다. 설치 성공만으로 앱 배포가 완료된 것은 아닙니다.
 
 ## 3. Kubernetes 구성요소 확인
 
-**실행**
+👁️ **설명**
+
+Azure 설치 상태뿐 아니라 클러스터 안의 워크로드와 Application CRD까지 확인합니다.
+
+🟢 **실행**
+
+**실행 위치: Cloud Shell Bash**
+
 ```bash
 kubectl get deployments,statefulsets,pods -n argocd
 workloads="$(kubectl get deployments,statefulsets -n argocd -o name)"
@@ -74,13 +104,20 @@ kubectl get pods -n argocd
 kubectl get crd applications.argoproj.io
 ```
 
-application-controller는 Git과 live 상태 비교·동기화, repo-server는 Git 조회·매니페스트 생성, server는 API·UI, Redis는 캐시를 담당합니다. 실제 리소스 이름과 replica 수는 설치 버전의 출력으로 확인합니다.
+📋 **확인**
+
+Deployment·StatefulSet의 rollout이 완료되고 `applications.argoproj.io` CRD가 있어야 합니다. application-controller는 Git과 live 상태 비교·동기화, repo-server는 Git 조회·매니페스트 생성, server는 API·UI, Redis는 캐시를 담당합니다. 실제 리소스 이름과 replica 수는 설치 버전의 출력으로 확인합니다.
 
 ## 4. 참가자 PC에서 AKS 연결 — PowerShell 창 A
 
+👁️ **설명**
+
 **여기부터 참가자 PC의 Windows PowerShell입니다. Cloud Shell이 아닙니다.** 02에서 확인한 기존 구독·리소스 그룹·AKS 이름을 입력합니다. 로컬 Azure 로그인과 kubeconfig는 Cloud Shell과 별개입니다.
 
-**실행 — PC / PowerShell 창 A**
+🟢 **실행**
+
+**실행 위치: 참가자 PC / PowerShell 창 A**
+
 ```powershell
 $ErrorActionPreference = 'Stop'
 az login --output none
@@ -105,22 +142,36 @@ kubectl --context $Cluster -n argocd get service argocd-server
 if ($LASTEXITCODE -ne 0) { throw 'Argo CD Service 조회에 실패했습니다.' }
 ```
 
+📋 **확인**
+
 출력된 구독과 AKS가 이번 실습 대상인지 확인합니다. 기존 kubeconfig 덮어쓰기 확인이 나오면 내용을 확인하고 무조건 덮어쓰지 않습니다.
 
 ## 5. 로컬 HTTPS 포트포워딩 — 창 A를 열어 두기
 
-**실행 — PC / PowerShell 창 A**
+👁️ **설명**
+
+관리 화면을 외부에 공개하지 않고 PC의 `127.0.0.1:8080`을 Argo CD Service의 HTTPS 포트로 연결합니다.
+
+🟢 **실행**
+
+**실행 위치: 참가자 PC / PowerShell 창 A**
+
 ```powershell
 kubectl --context $Cluster -n argocd port-forward service/argocd-server 8080:443 --address 127.0.0.1
 if ($LASTEXITCODE -ne 0) { throw '포트포워딩이 종료되었습니다. 의도적인 Ctrl+C가 아니면 오류를 확인하세요.' }
 ```
 
-**예상 출력 — 실제 Pod 포트는 설치 버전에 따라 다를 수 있습니다**
+📋 **확인**
+
+아래는 비교용 출력입니다. 실제 Pod 포트는 설치 버전에 따라 다를 수 있습니다.
+
 ```text
 Forwarding from 127.0.0.1:8080 -> 8080
 ```
 
 명령은 실행 중인 상태로 남습니다. 바로 종료되면 다음 단계로 넘어가지 말고 오류를 확인합니다. 브라우저에서 **https://127.0.0.1:8080**을 엽니다.
+
+⚠️ **주의**
 
 기본 자체 서명 인증서 때문에 경고가 나올 수 있습니다. 주소가 정확히 로컬 `127.0.0.1:8080`이고 자신의 포워딩임을 확인한 경우에만 실습용 예외로 진행합니다. 브라우저 전체의 인증서 검증을 끄거나 임의의 외부 주소 경고를 무시하지 않습니다.
 
@@ -128,11 +179,18 @@ Forwarding from 127.0.0.1:8080 -> 8080
 
 ## 6. 초기 로그인 — PC의 별도 PowerShell 창 B
 
+👁️ **설명**
+
 창 A는 포워딩 중이므로 **PC에서 새 PowerShell 창 B**를 엽니다. kubeconfig 파일은 같은 PC 사용자에게 공유되지만 변수는 공유되지 않으므로 AKS 이름을 다시 입력합니다.
+
+⚠️ **주의**
 
 초기 비밀번호는 아래 명령으로 **PC 클립보드에만** 복사합니다. 화면에 출력하거나 Git·환경 파일·메신저·스크린샷에 남기지 마세요. 클립보드 기록·다른 장치 동기화를 사용 중이라면 비밀번호가 남지 않도록 해당 기능도 주의합니다.
 
-**실행 — PC / PowerShell 창 B**
+🟢 **실행**
+
+**실행 위치: 참가자 PC / PowerShell 창 B**
+
 ```powershell
 $ErrorActionPreference = 'Stop'
 $Cluster = Read-Host '02에서 확인한 기존 AKS 이름'
@@ -144,18 +202,45 @@ Set-Clipboard -Value ([System.Text.Encoding]::UTF8.GetString([System.Convert]::F
 Remove-Variable encodedPassword
 ```
 
+📋 **확인**
+
+명령이 오류 없이 끝나야 합니다. 비밀번호를 화면에 출력하지 않고 클립보드로 복사한 상태입니다.
+
+🟢 **실행**
+
+**실행 위치: PC 브라우저 / Argo CD UI**
+
 브라우저의 Argo CD 로그인 화면에서 사용자 이름은 **admin**, 비밀번호는 붙여넣기로 입력합니다. 이미 비밀번호를 바꿔 초기 Secret을 삭제한 재개 상황에서는 이 명령을 반복하지 않고 자신이 변경한 비밀번호로 로그인합니다. 새 Secret을 임의로 만들지 않습니다.
 
 ![실제 Argo CD 로그인 화면 — 비밀번호 입력 전](images/argocd-login.png)
 
+📋 **확인**
+
+로그인 후 Applications 화면이 열려야 합니다. 초기 비밀번호는 다음 단계에서 변경합니다.
+
 ## 7. UI에서 비밀번호 변경
+
+👁️ **설명**
+
+초기 비밀번호를 계속 사용하지 않습니다. **새 비밀번호로 재로그인한 뒤** 초기 Secret을 삭제하는 순서를 지킵니다.
+
+🟢 **실행**
+
+**실행 위치: PC 브라우저 / Argo CD UI**
 
 1. **User Info → Update Password**를 엽니다. 버전에 따라 사용자 메뉴·동작 메뉴 안에 있을 수 있습니다.
 2. Current Password에 초기 비밀번호, New Password·Confirm New Password에 새 비밀번호를 입력하고 저장합니다. 리허설 서버의 기본 규칙은 **8~32자**였습니다. 설치 환경의 정책에 맞는 고유한 비밀번호를 선택하고 오류 없이 저장됐는지 확인합니다.
 3. 로그아웃한 뒤 **https://127.0.0.1:8080**으로 다시 접속해 **새 비밀번호로 재로그인**합니다. 리허설 버전은 로그아웃 시 기본 예시 주소 `argocd.example.com`으로 이동했습니다. 이 경우 외부 주소에서 로그인하지 말고 정확한 로컬 주소를 직접 입력합니다.
 4. 확인이 끝나면 창 B에서 클립보드를 비우고 초기 Secret을 삭제합니다. 새 비밀번호는 안전한 개인 비밀번호 관리 수단에 보관합니다.
 
-**실행 — PC / PowerShell 창 B, 새 비밀번호로 재로그인한 뒤**
+📋 **확인**
+
+저장 오류 없이 비밀번호가 변경됐고, 정확한 로컬 주소에서 새 비밀번호로 로그인했는지 확인합니다.
+
+🟢 **실행**
+
+**실행 위치: 참가자 PC / PowerShell 창 B, 새 비밀번호로 재로그인한 뒤**
+
 ```powershell
 $confirmed = Read-Host '새 비밀번호로 재로그인했다면 yes 입력'
 if ($confirmed -ne 'yes') { throw '새 비밀번호로 로그인 확인 후 진행하세요.' }
@@ -164,13 +249,21 @@ kubectl --context $Cluster -n argocd delete secret argocd-initial-admin-secret
 if ($LASTEXITCODE -ne 0) { throw '초기 비밀번호 Secret 정리에 실패했습니다.' }
 ```
 
+📋 **확인**
+
+초기 Secret 삭제 성공 메시지를 확인합니다.
+
+⚠️ **주의**
+
 초기 Secret은 최초 비밀번호의 보관용일 뿐입니다. 비밀번호 변경·로그인 확인 전에 삭제하지 않습니다. 이 로그인은 학습용 로컬 admin이며 운영용 SSO·RBAC 설계를 대신하지 않습니다.
 
 ## 설정 변경 원칙
 
+⚠️ **주의**
+
 extension이 관리하는 Argo CD ConfigMap을 `kubectl edit`로 수정하지 않습니다. 필요한 설정은 `az k8s-extension update --config ...` 등 extension 구성 API를 사용합니다. 이 실습에서는 추가 설정 변경이 없습니다.
 
-## 문제 해결
+## 트러블슈팅
 
 | 증상 | 확인과 대응 |
 |---|---|
@@ -191,4 +284,13 @@ extension이 관리하는 Argo CD ConfigMap을 `kubectl edit`로 수정하지 �
 
 로컬 접속과 초기 계정은 [Argo CD Getting Started](https://argo-cd.readthedocs.io/en/stable/getting_started/)를 참고합니다. extension 1.0.20 / Argo CD UI v3.5.6에서 로컬 로그인·비밀번호 변경·재로그인·초기 Secret 삭제를 실제 검증했습니다. UI 레이블은 설치 버전에 따라 조금 다를 수 있습니다. Cloud Shell·대화형 클립보드 등 미검증 범위는 [README의 기록](../README.md#검증-범위와-대체-단계)을 확인합니다.
 
-[← 02 — 환경 준비](02-environment-setup.md) | [다음: 04 — 앱 배포](04-deploy-sample-app.md)
+## 완료 체크
+
+- [ ] extension이 `Succeeded`이고 Kubernetes 워크로드의 rollout이 완료됐습니다.
+- [ ] PC의 로컬 HTTPS로 UI에 로그인했습니다.
+- [ ] 새 비밀번호로 재로그인한 뒤 초기 Secret을 삭제했습니다.
+- [ ] 관리 화면은 공개하지 않았으며 포워딩 창 A를 유지하고 있습니다.
+
+## 다음 단계
+
+[← 02. AKS 환경 준비](02-environment-setup.md) | [README](../README.md) | [다음: 04. UI 앱 배포 →](04-deploy-sample-app.md)
