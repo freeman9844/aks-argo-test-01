@@ -4,7 +4,7 @@
 
 ## 목표
 
-실습 리소스 그룹과 AKS 관리 노드 리소스 그룹이 모두 없어지고 해당 실습의 로컬 설정만 정리됩니다.
+실습 리소스 그룹을 삭제하고, AKS를 생성했다면 관리 노드 리소스 그룹의 부재도 확인합니다. 로컬에서는 해당 실습의 설정만 정리합니다.
 
 ⚠️ **주의**
 
@@ -22,6 +22,7 @@
 
 ```bash
 set -euo pipefail
+unset AKS_CREATION_ATTEMPTED NODE_RESOURCE_GROUP
 source "$HOME/.aks-argocd-ws-env"
 az account set --subscription "$SUBSCRIPTION_ID"
 az account show --query '{Name:name,State:state}' -o table
@@ -42,7 +43,7 @@ fi
 
 ⚠️ **주의**
 
-환경 파일이 없다면 [01의 복구 절차](01-prerequisites.md#5-새-세션에서-재개하는-경우)를 사용합니다. 그룹이 이미 없다면 삭제를 다시 실행하지 말고 기록한 노드 그룹의 부재를 확인한 후 5절로 이동합니다.
+환경 파일이 없다면 [01의 복구 절차](01-prerequisites.md#5-새-세션에서-재개하는-경우)를 사용합니다. 그룹이 이미 없다면 삭제를 다시 실행하지 마세요. 기록한 노드 그룹의 부재 또는 AKS를 생성하려고 한 적이 없음을 확인한 후 5절로 이동합니다. 생성 이력이 불명확하면 활동 로그와 잔여 리소스를 먼저 확인합니다.
 
 ## 2. 노드 리소스 그룹 이름 확인
 
@@ -172,20 +173,20 @@ PC의 **PowerShell 창 A에서 Ctrl+C**로 이 실습의 포트포워딩을 중�
 **실행 위치: Cloud Shell Bash**
 
 ```bash
-kubectl delete namespace "$APP_NAMESPACE" --wait=true --timeout=180s
+kubectl delete namespace "$APP_NAMESPACE" --ignore-not-found=true --wait=true --timeout=180s
 az k8s-extension delete --resource-group "$RESOURCE_GROUP" \
   --cluster-name "$CLUSTER" --cluster-type managedClusters --name "$EXTENSION_NAME" --yes
 ```
 
 📋 **확인**
 
-namespace 삭제와 extension 삭제 명령이 오류 없이 완료돼야 합니다.
+Application만 만들고 첫 Sync 전에 종료했다면 `workshop` namespace가 아직 없을 수 있습니다. 이 경우에도 extension 삭제를 진행합니다. 권한·연결 오류나 삭제 시간 초과는 무시하지 않습니다.
 
 ### 중도 종료 경로
 
 ⚠️ **주의**
 
-AKS 생성 실패, extension 설치 실패, Application 미생성, controller가 이미 제거되어 finalizer가 멈춘 경우에는 **3절을 건너뛰고** 1~2절의 삭제 대상 확인 후 4절로 이동합니다. 클러스터 내부 정리가 불가능해도 전용 Azure 그룹 삭제로 AKS와 관리 노드 리소스를 정리할 수 있습니다.
+AKS 미생성 또는 생성 실패, extension 설치 실패, Application 미생성, controller가 이미 제거되어 finalizer가 멈춘 경우에는 **3절을 건너뛰고** 1~2절의 삭제 대상 확인 후 4절로 이동합니다. 클러스터 내부 정리가 불가능해도 전용 Azure 그룹 삭제로 AKS와 관리 노드 리소스를 정리할 수 있습니다.
 
 finalizer를 무조건 강제 제거하거나 노드 그룹·공인 IP를 개별적으로 먼저 삭제하지 않습니다.
 
@@ -220,6 +221,8 @@ if [ -n "${NODE_RESOURCE_GROUP:-}" ]; then
     echo "AKS 노드 그룹이 아직 남아 있습니다. 비용과 AKS 삭제 오류를 확인하세요." >&2
     exit 1
   fi
+elif [ "${CLUSTER_ID-unchecked}" = "" ] && [ "${AKS_CREATION_ATTEMPTED:-unknown}" = false ]; then
+  echo "AKS 생성 시도와 AKS 리소스가 없음을 확인했습니다. 관리 노드 그룹 확인을 건너뜁니다."
 else
   echo "노드 그룹 이름이 없습니다. AKS 생성 이력과 잔여 노드 리소스를 확인한 뒤 완료로 판정하세요." >&2
   exit 1
@@ -228,11 +231,11 @@ fi
 
 📋 **확인**
 
-실습 그룹과 기록된 관리 노드 그룹 모두 `az group exists` 결과가 `false`여야 합니다.
+실습 그룹의 `az group exists` 결과가 `false`여야 합니다. 관리 노드 그룹 이름이 기록됐다면 해당 그룹도 `false`여야 합니다. 이름이 없을 때는 **2절의 AKS 조회 결과가 비어 있고 원래 환경 파일에 생성 미시도가 기록된 경우**만 노드 그룹 확인을 생략할 수 있습니다.
 
 ⚠️ **주의**
 
-조회 권한 오류는 `false`로 간주하지 않습니다. 삭제 중인 리소스·오류·잠금은 portal에서 확인하고 해결합니다. 노드 그룹이 남았거나 그 상태를 확인하지 못했다면 정리 완료가 아닙니다.
+조회 권한 오류는 `false`로 간주하지 않습니다. 이전 버전의 환경 파일이거나 파일을 복원한 경우, AKS가 조회되지 않는 것만으로 생성 미시도를 단정하지 않습니다. 활동 로그와 리소스 목록으로 잔여 노드 그룹을 확인하세요. 노드 그룹이 남았거나 필요한 확인을 하지 못했다면 정리 완료가 아닙니다.
 
 ## 5. 해당 실습의 로컬 흔적
 
@@ -257,12 +260,17 @@ kubectl config get-contexts
 **실행 위치: Cloud Shell Bash**
 
 ```bash
-kubectl config delete-context "$CLUSTER"
+contexts="$(kubectl config get-contexts -o name)"
+if grep -Fxq -- "$CLUSTER" <<< "$contexts"; then
+  kubectl config delete-context "$CLUSTER"
+else
+  echo "해당 실습 컨텍스트가 이미 없습니다."
+fi
 ```
 
 📋 **확인**
 
-선택한 실습 컨텍스트의 삭제 메시지를 확인합니다.
+선택한 실습 컨텍스트의 삭제 메시지 또는 이미 없다는 메시지를 확인합니다.
 
 ⚠️ **주의**
 
@@ -335,7 +343,7 @@ GitHub Fork는 남겨도 Azure 요금이 발생하지 않습니다. 삭제하려
 
 - [ ] 정상·중도 종료 상태에 맞는 삭제 경로를 선택했습니다.
 - [ ] 실습 리소스 그룹의 부재를 확인했습니다.
-- [ ] 기록된 AKS 관리 노드 그룹의 부재를 확인했습니다.
+- [ ] 기록된 AKS 관리 노드 그룹의 부재 또는 AKS 생성 미시도를 확인했습니다.
 - [ ] 포워딩을 종료하고 이번 실습의 로컬 컨텍스트·환경 파일만 정리했습니다.
 - [ ] 공유 리소스와 다른 컨텍스트는 삭제하지 않았습니다.
 

@@ -184,7 +184,19 @@ AKS 생성·자격 증명 취득은 **4분 18초**, extension 설치는 **6분 2
 
 준비 시작부터 Azure 삭제 완료까지 **약 71분 27초**(11:58:57~13:10:24 UTC)가 걸렸습니다. 도구 준비·브라우저 자동화 작성·오류 진단이 포함된 단일 리허설이며, 미검증 대체 단계도 있으므로 참가자의 전체 실습 소요 시간을 증명하지 않습니다. 위의 90분은 참가자용 설계 목표입니다.
 
-기여자는 저장소 루트에서 `python -m unittest discover -s tests -p 'test_*.py' -v`로 회귀 검사를 실행합니다. Python 표준 라이브러리와 실제 Bash가 필요하며 Azure 리소스는 생성하지 않습니다. Bash를 자동 탐색하지 못하면 `BASH_PATH` 환경 변수에 실행 파일 경로를 지정합니다.
+### 중도 종료 경로 재검증 (2026-11-21)
+
+Korea Central의 별도 실습 그룹에서 **AKS 생성 전 중단**과 **Application을 생성했지만 첫 Sync 전에 중단**한 경로를 검증했습니다. 전자는 관리 노드 그룹과 kubeconfig 컨텍스트 없이도 정리됐고, 후자는 `workshop` namespace가 없어도 extension 삭제로 진행했습니다.
+
+같은 리허설에서 AKS **1.36.5**와 extension **1.0.20**으로 nginx의 공개 HTTP 200과 응답 본문, 리허설 커밋으로 전환했을 때 자동 Sync와 Ready Pod 2개, 동일 SHA의 Self Heal, Foreground 삭제를 확인했습니다. 로컬 Bash·`kubectl`·HTTP 클라이언트를 사용했으며, 이 재검증에서 브라우저 UI·GitHub Fork·Cloud Shell·자동 Prune을 다시 실행하지는 않았습니다.
+
+### 행사 전 재검증
+
+- 참가자와 같은 환경에서 개인 GitHub 계정의 공개 Fork·웹 편집, Cloud Shell Bash, 로컬 Windows PowerShell과 브라우저의 공개 HTTP 접근을 확인합니다.
+- 생성된 AKS 버전과 extension의 `currentVersion`을 기록하고, 첫 Sync·자동 정책·Foreground 삭제 화면의 버튼과 메뉴를 교재와 비교합니다. 리허설에서 확인한 버전은 고정값이 아닙니다.
+- 자동 Prune 동작까지 시연한다면 관리 중인 임시 리소스 하나를 Git에서 제거하고, 수동 Sync나 Application 삭제 없이 해당 리소스가 사라지는지 별도로 확인합니다.
+
+기여자는 저장소 루트에서 `python -m unittest discover -s tests -p 'test_*.py' -v`로 회귀 검사를 실행합니다. [GitHub Actions 워크플로](.github/workflows/workshop-checks.yml)도 같은 검사를 실행합니다. Python 표준 라이브러리와 실제 Bash가 필요하며 Azure 리소스는 생성하지 않습니다. Bash를 자동 탐색하지 못하면 `BASH_PATH` 환경 변수에 실행 파일 경로를 지정합니다.
 
 ## 참고 자료
 

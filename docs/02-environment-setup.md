@@ -63,11 +63,17 @@ Automatic이 아닌 일반 Standard 클러스터를 기본 SKU로 생성하고, 
 
 관리 ID·Azure CNI Overlay·노드 2개를 사용하는 학습용 구성이며, 운영용 HA·사설 API·Entra RBAC 설계는 다루지 않습니다. `koreacentral`의 SKU 가용성·쿼터·조직 정책을 사전에 확인하세요. Kubernetes 버전은 이 리전에서 생성 시 지원되는 기본 버전을 사용합니다.
 
+생성 명령을 호출하기 전에 환경 파일에 시도 이력을 남깁니다. 생성 실패나 세션 종료로 AKS가 목록에 보이지 않아도 정리 단계에서 미시도로 판단하지 않습니다.
+
 🟢 **실행**
 
 **실행 위치: Cloud Shell Bash**
 
 ```bash
+if ! printf 'export AKS_CREATION_ATTEMPTED=true\n' >> "$HOME/.aks-argocd-ws-env"; then
+  echo "AKS 생성 시도 이력을 저장하지 못했습니다. 생성을 중단합니다." >&2
+  exit 1
+fi
 az aks create --resource-group "$RESOURCE_GROUP" --name "$CLUSTER" \
   --location "$LOCATION" --tier free \
   --node-count 2 --node-vm-size Standard_D2s_v5 \

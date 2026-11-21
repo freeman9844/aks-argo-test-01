@@ -186,8 +186,9 @@ export CLUSTER="aks-argocd-ws-$SUFFIX"
 export LOCATION=koreacentral
 export EXTENSION_NAME=argocd APP_NAMESPACE=workshop APP_NAME=gitops-demo
 export REPO_URL="https://github.com/$GITHUB_OWNER/$GITHUB_REPO.git"
+export AKS_CREATION_ATTEMPTED=false
 umask 077
-for name in SUBSCRIPTION_ID GITHUB_OWNER GITHUB_REPO GIT_BRANCH SUFFIX RESOURCE_GROUP CLUSTER LOCATION EXTENSION_NAME APP_NAMESPACE APP_NAME REPO_URL; do
+for name in SUBSCRIPTION_ID GITHUB_OWNER GITHUB_REPO GIT_BRANCH SUFFIX RESOURCE_GROUP CLUSTER LOCATION EXTENSION_NAME APP_NAMESPACE APP_NAME REPO_URL AKS_CREATION_ATTEMPTED; do
   printf 'export %s=%q\n' "$name" "${!name}"
 done > "$HOME/.aks-argocd-ws-env"
 printf '실습 그룹: %s\n' "$RESOURCE_GROUP"
@@ -196,7 +197,7 @@ printf 'Fork: %s / branch: %s\n' "$REPO_URL" "$GIT_BRANCH"
 
 📋 **확인**
 
-브라우저의 Fork URL과 출력값을 비교합니다. 리소스 이름·공개 URL·선택한 구독의 식별자만 저장하며 자격 증명은 포함하지 않습니다.
+브라우저의 Fork URL과 출력값을 비교합니다. 리소스 이름·공개 URL·선택한 구독의 식별자와 AKS 생성 시도 여부를 저장하며 자격 증명은 포함하지 않습니다.
 
 ## 5. 새 세션에서 재개하는 경우
 
@@ -259,8 +260,9 @@ test "$(az group show --name "$RESOURCE_GROUP" --query tags.environment -o tsv)"
 SUFFIX="${CLUSTER#aks-argocd-ws-}"
 EXTENSION_NAME=argocd APP_NAMESPACE=workshop APP_NAME=gitops-demo
 REPO_URL="https://github.com/$GITHUB_OWNER/$GITHUB_REPO.git"
+AKS_CREATION_ATTEMPTED=unknown
 umask 077
-for name in SUBSCRIPTION_ID GITHUB_OWNER GITHUB_REPO GIT_BRANCH SUFFIX RESOURCE_GROUP CLUSTER LOCATION EXTENSION_NAME APP_NAMESPACE APP_NAME REPO_URL; do
+for name in SUBSCRIPTION_ID GITHUB_OWNER GITHUB_REPO GIT_BRANCH SUFFIX RESOURCE_GROUP CLUSTER LOCATION EXTENSION_NAME APP_NAMESPACE APP_NAME REPO_URL AKS_CREATION_ATTEMPTED; do
   printf 'export %s=%q\n' "$name" "${!name}"
 done > "$HOME/.aks-argocd-ws-env"
 source "$HOME/.aks-argocd-ws-env"
@@ -269,7 +271,7 @@ printf '복원한 기존 그룹: %s / AKS: %s\n' "$RESOURCE_GROUP" "$CLUSTER"
 
 📋 **확인**
 
-이 블록은 리소스를 생성하지 않습니다. 기존 AKS가 정상이라면 5.3절을 실행하고 해당 모듈부터 재개합니다. AKS 생성에 실패했거나 아직 AKS가 없다면 이름을 새로 만들지 말고 02의 상태 확인 또는 06의 중도 종료 정리로 이동합니다.
+이 블록은 리소스를 생성하지 않습니다. 사라진 환경 파일에서 AKS 생성 시도 이력은 복구할 수 없으므로 `unknown`으로 기록합니다. 기존 AKS가 정상이라면 5.3절을 실행하고 해당 모듈부터 재개합니다. AKS 생성에 실패했거나 아직 AKS가 없다면 이름을 새로 만들지 말고 02의 상태 확인 또는 06의 중도 종료 정리로 이동합니다.
 
 ### 5.3. 기존 AKS의 kubeconfig 복원
 
