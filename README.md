@@ -294,7 +294,7 @@ Korea Central의 별도 실습 그룹에서 **AKS 생성 전 중단**과 **Appli
 - 생성된 AKS 버전과 extension의 `currentVersion`을 기록하고, 첫 Sync·자동 정책·Foreground 삭제 화면의 버튼과 메뉴를 교재와 비교합니다. 리허설에서 확인한 버전은 고정값이 아닙니다.
 - 자동 Prune 동작까지 시연한다면 관리 중인 임시 리소스 하나를 Git에서 제거하고, 수동 Sync나 Application 삭제 없이 해당 리소스가 사라지는지 별도로 확인합니다.
 
-기여자는 저장소 루트에서 `python -m unittest discover -s tests -p 'test_*.py' -v`로 회귀 검사를 실행합니다. [GitHub Actions 워크플로](.github/workflows/workshop-checks.yml)도 같은 검사를 실행합니다. Python 표준 라이브러리와 실제 Bash가 필요하며 Azure 리소스는 생성하지 않습니다. Bash를 자동 탐색하지 못하면 `BASH_PATH` 환경 변수에 실행 파일 경로를 지정합니다.
+기여자는 저장소 루트에서 `python -m unittest discover -s tests -p 'test_*.py' -v`로 회귀 검사를 실행합니다. Python 표준 라이브러리와 실제 Bash가 필요하며 Azure 리소스는 생성하지 않습니다. Bash를 자동 탐색하지 못하면 `BASH_PATH` 환경 변수에 실행 파일 경로를 지정합니다.
 
 ## 참고 자료
 
