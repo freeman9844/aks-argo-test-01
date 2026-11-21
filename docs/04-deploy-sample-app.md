@@ -6,6 +6,41 @@
 
 UI에서 Application을 생성하고 첫 수동 Sync를 수행합니다. 자신의 Fork를 바라보는 앱이 `Synced`·`Healthy`, nginx replicas 1·Ready 1이며 브라우저에서 nginx 페이지가 열립니다.
 
+## 이 모듈에서 이해할 개념
+
+👁️ **설명**
+
+**Git에 있는 앱 매니페스트 읽기**
+
+Argo CD가 배포할 파일은 Fork의 `manifests/app` 폴더에 있는 두 파일입니다. 실습 중 수정하는 값은 `replicas` 하나뿐입니다.
+
+| 파일·필드 | 값 | 의미와 이 실습에서의 역할 |
+|---|---|---|
+| `deployment.yaml` `spec.replicas` | `1` | 원하는 Pod 수. 05에서 Git으로 2로 바꿈 |
+| `selector.matchLabels` / `template.metadata.labels` | `app: gitops-demo` | Deployment가 자신의 Pod를 찾는 라벨. Service도 같은 라벨로 Pod를 찾음 |
+| `image` | `nginx:1.28.3` | 태그를 고정해 실행할 때마다 같은 이미지 사용 |
+| `resources.requests` / `limits` | CPU 100m·메모리 64Mi / 500m·128Mi | 스케줄링에 필요한 최소량과 상한. 작은 노드 2개에 여유 있게 배치 |
+| `readinessProbe` | `GET /` 5초마다 | 성공해야 Pod가 Ready가 되어 Service 트래픽을 받음. Argo CD Health 판정에도 반영 |
+| `livenessProbe` | `GET /` 10초마다 | 계속 실패하면 kubelet이 컨테이너를 재시작 |
+| `service.yaml` `type` | `LoadBalancer` | AKS가 Azure Load Balancer에 공인 IP를 붙여 인터넷에서 HTTP 80으로 접근 가능 |
+| `targetPort` | `http` | 컨테이너 포트 이름(80)으로 연결. 포트 번호가 바뀌어도 이름으로 유지 |
+
+**왜 처음에는 Manual인가요?** 자동 Sync를 켜면 앱을 만드는 순간 배포가 시작돼 무엇이 일어났는지 보기 어렵습니다. 처음에는 Manual로 만들어 `OutOfSync`·`Missing` 상태를 먼저 보고, 직접 SYNC를 눌러 리소스가 생기는 과정을 관찰합니다. 자동 정책은 05에서 켭니다.
+
+**Auto-Create Namespace(`CreateNamespace=true`)** Destination namespace `workshop`은 처음에 없습니다. 이 옵션이 없으면 Sync가 "namespace not found"로 실패합니다. 옵션을 켜면 Argo CD가 Sync할 때 namespace를 먼저 만듭니다. 2026-11-21 재검증에서도 이 옵션 없이 Sync하면 실패하는 것을 확인했습니다.
+
+**REFRESH와 SYNC는 다릅니다**
+
+| 동작 | 하는 일 | 클러스터 변경 |
+|---|---|---|
+| **REFRESH** | Git과 live 상태를 다시 읽어 **비교 결과만** 갱신 | 없음 |
+| **HARD REFRESH** | 매니페스트 캐시를 버리고 Git에서 다시 생성한 뒤 비교 | 없음 |
+| **SYNC** | 비교 결과의 차이를 클러스터에 **apply** | 있음 |
+
+진단할 때는 REFRESH를 먼저 사용합니다. SYNC는 실제 배포 동작입니다.
+
+**Health가 Healthy가 되는 조건** Argo CD는 리소스 종류별 규칙으로 Health를 판정합니다. Deployment는 원하는 replicas만큼 새 Pod가 업데이트되고 사용 가능해야 Healthy입니다. LoadBalancer Service는 공인 IP가 할당되어야 Healthy입니다. 그래서 Sync가 끝난 직후 잠시 `Progressing`으로 보일 수 있습니다.
+
 ## 0. UI와 입력값 준비
 
 👁️ **설명**

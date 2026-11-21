@@ -6,6 +6,45 @@
 
 실습 전용 리소스 그룹과 AKS가 생성되고, 올바른 컨텍스트에서 노드 2개가 Ready입니다. 노드 리소스 그룹 이름이 저장되어 있습니다.
 
+## 이 모듈에서 이해할 개념
+
+👁️ **설명**
+
+**AKS는 무엇을 대신 관리하나요?** Kubernetes는 control plane(API 서버·etcd·scheduler·controller-manager)과 워커 노드로 구성됩니다. AKS에서는 **control plane을 Azure가 운영**하므로 참가자의 구독에는 보이지 않습니다. 참가자 구독에 생기는 것은 워커 노드 VM과 그 주변 네트워크·디스크입니다.
+
+**리소스 그룹이 두 개 생기는 이유**
+
+```mermaid
+flowchart LR
+  subgraph rg["실습 그룹 rg-argocd-ws-... (참가자가 생성)"]
+    aks["AKS 클러스터 리소스"]
+    ext["Argo CD extension (03에서 추가)"]
+    aks --- ext
+  end
+  subgraph mc["노드 그룹 MC_... (AKS가 자동 생성)"]
+    vmss["노드 VM Scale Set ×2"]
+    disk["OS 디스크"]
+    lb["Standard Load Balancer·공인 IP"]
+    vnet["가상 네트워크·NSG"]
+  end
+  aks -->|"생성·관리"| mc
+```
+
+`MC_...` 그룹은 AKS가 노드를 관리하는 작업 공간입니다. 여기의 리소스를 직접 바꾸면 AKS가 기대하는 상태와 달라져 업그레이드·확장이 실패할 수 있습니다. 비용은 대부분 이 그룹의 VM·디스크·IP에서 발생합니다.
+
+**생성 옵션의 의미**
+
+| 옵션 | 선택 | 이유 |
+|---|---|---|
+| 클러스터 유형 | Standard(Automatic 아님) | 노드 수·VM 크기를 직접 정해 비용과 동작을 예측하기 쉽게 하기 위해 |
+| `--tier free` | control plane Free 요금제 | API 서버 가용성 SLA가 없는 학습용 요금제. 노드 VM 등은 그대로 과금 |
+| `--node-count 2` / `Standard_D2s_v5` | 2 vCPU·8 GiB 노드 2개 | 시스템 Pod·Argo CD(비HA)·nginx를 올리기에 충분한 최소 구성 |
+| `--enable-managed-identity` | 관리 ID | AKS가 Azure 리소스(LB·IP 등)를 만들 때 비밀번호 없는 Azure ID 사용 |
+| `--network-plugin azure --network-plugin-mode overlay` | Azure CNI Overlay | 노드는 VNet IP, Pod는 별도의 사설 overlay 대역 IP 사용. VNet 주소를 아끼고 설계가 단순 |
+| `--generate-ssh-keys` | SSH 키 | 노드 VM 생성에 필요한 공개 키. 실습에서 노드에 SSH 접속하지는 않음 |
+
+**kubeconfig와 컨텍스트** `az aks get-credentials`는 API 서버 주소와 사용자 자격 증명을 `~/.kube/config`에 추가합니다. 하나의 kubeconfig에 여러 클러스터가 있을 수 있으므로, **컨텍스트 이름을 AKS 이름과 같게 지정**하고 `kubectl config use-context`로 명시적으로 선택합니다. 다른 클러스터에 실수로 명령을 보내는 것을 막기 위해서입니다.
+
 ## 0. 변수 복원
 
 👁️ **설명**

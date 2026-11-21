@@ -6,6 +6,50 @@
 
 실습 리소스 그룹을 삭제하고, AKS를 생성했다면 관리 노드 리소스 그룹의 부재도 확인합니다. 로컬에서는 해당 실습의 설정만 정리합니다.
 
+## 이 모듈에서 이해할 개념
+
+👁️ **설명**
+
+**정리 순서가 중요한 이유**
+
+```mermaid
+flowchart LR
+  a["① Application<br/>Foreground 삭제"] --> b["② 자식 리소스<br/>부재 확인"]
+  b --> c["③ 포워딩 종료<br/>namespace·extension 삭제"]
+  c --> d["④ 실습 그룹 삭제"]
+  d --> e["⑤ MC_ 그룹 부재 확인"]
+  e --> f["⑥ 로컬 컨텍스트·<br/>환경 파일 정리"]
+```
+
+| 순서 | 먼저 하지 않으면 생기는 문제 |
+|---|---|
+| Application을 먼저 삭제 | 앱이 남은 채 Deployment만 지우면 Self Heal이 다시 만듦 |
+| 자식 리소스 확인 후 extension 삭제 | controller가 먼저 사라지면 Application의 finalizer를 처리할 주체가 없어 `Terminating`에 멈춤 |
+| Azure 그룹 삭제 후 `MC_` 확인 | 실습 그룹 삭제 명령이 성공해도 AKS가 노드 그룹을 지우는 데 시간이 더 걸림. 노드 그룹이 남으면 VM·IP 비용이 계속 발생 |
+| Azure 정리 후 로컬 정리 | 환경 파일을 먼저 지우면 삭제할 이름을 잃음 |
+
+**finalizer와 cascading 삭제** finalizer는 "이 리소스를 지우기 전에 해야 할 일이 남았다"는 표시입니다. Application에 `resources-finalizer.argocd.argoproj.io`가 있으면 Kubernetes는 Application을 바로 지우지 않고 기다립니다. 그동안 Argo CD controller가 자식 리소스를 정리한 뒤 finalizer를 제거합니다.
+
+| 삭제 방식 | 동작 | 이 실습에서 |
+|---|---|---|
+| **Foreground** | 자식 리소스를 먼저 지우고 마지막에 Application을 제거 | **사용** — 앱이 목록에서 사라지는 시점이 자식 정리 이후. 3.2절에서 실제 부재를 다시 확인 |
+| Background | Application을 먼저 제거하고 자식은 뒤에서 정리 | 사용하지 않음 — 목록이 빨리 비지만 정리 완료 시점이 불명확 |
+| Non-cascading(Orphan) | Application만 지우고 자식은 그대로 둠 | **선택하지 않음** — Deployment·Service·공인 IP가 남음 |
+
+finalizer를 강제로 지우면 Kubernetes는 Application을 삭제하지만 자식 리소스 정리는 건너뜁니다. 그래서 controller가 멈춘 경우에는 finalizer를 건드리지 않고 Azure 그룹 전체를 삭제하는 경로를 사용합니다.
+
+**"삭제 요청"과 "삭제 완료"는 다릅니다** `az group delete --no-wait`는 요청을 접수하면 바로 끝납니다. 실제 삭제는 Azure에서 수 분 이상 진행됩니다. 그래서 `az group exists`가 `false`가 될 때까지 기다리고, `MC_` 그룹도 같은 방법으로 확인합니다.
+
+**중도 종료 상황별 경로**
+
+| 그만둔 시점 | 3절(앱·extension) | 노드 그룹 확인 |
+|---|---|---|
+| AKS 생성 전 | 건너뜀 | 생성 미시도(`AKS_CREATION_ATTEMPTED=false`)가 기록돼 있으면 생략 |
+| AKS 생성 실패 | 건너뜀 | 생성을 시도했으므로 잔여 노드 그룹을 확인 |
+| extension 설치 실패 | 건너뜀 | 기록된 `MC_` 그룹의 부재 확인 |
+| Application 생성 후 첫 Sync 전 | 수행. namespace가 없어도 extension 삭제로 진행 | 기록된 `MC_` 그룹의 부재 확인 |
+| 정상 완료 | 수행 | 기록된 `MC_` 그룹의 부재 확인 |
+
 ⚠️ **주의**
 
 이 모듈은 실습 전용 리소스 그룹의 모든 리소스를 삭제합니다. 기존 서비스가 들어 있는 그룹에 실행하지 마세요. GitHub Fork 삭제는 별개입니다.

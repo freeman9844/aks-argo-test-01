@@ -67,6 +67,94 @@ Git이 원하는 상태의 기준입니다. GitHub에서 AKS로 push하는 CI �
 
 관리 화면은 **로컬 HTTPS**로만 접속하며 공개 endpoint를 만들지 않습니다. Cloud Shell의 localhost와 PC의 localhost는 다릅니다. PC의 포워딩 창은 앱 삭제까지 유지하고, 공개되는 **HTTP nginx 앱**과 구분합니다.
 
+## 핵심 개념 먼저 보기
+
+👁️ **설명**
+
+실습 명령보다 먼저 아래 네 가지를 이해하면 각 단계의 의미가 훨씬 분명해집니다.
+
+### GitOps: "Git에 적힌 상태가 정답"
+
+일반적인 CI/CD는 파이프라인이 `kubectl apply`로 클러스터에 변경을 **밀어 넣습니다(push)**. GitOps에서는 클러스터 안의 에이전트가 Git을 주기적으로 읽어 **스스로 끌어옵니다(pull)**. 이 실습의 에이전트가 Argo CD입니다.
+
+| 관점 | push 방식 CI/CD | pull 방식 GitOps(이 실습) |
+|---|---|---|
+| 변경 경로 | 파이프라인 → 클러스터 | Git ← 클러스터 안의 Argo CD |
+| 클러스터 자격 증명 | 외부 파이프라인이 보유 | 클러스터 밖으로 내보내지 않음 |
+| 누군가 kubectl로 직접 수정 | 다음 배포 전까지 그대로 남음 | 차이(drift)를 감지하고, Self Heal이면 Git 값으로 되돌림 |
+| 변경 이력·롤백 | 파이프라인 실행 기록 | Git 커밋 이력. 되돌리기는 Git revert |
+
+그래서 이 실습에서는 replicas를 바꿀 때 **GitHub에 커밋**하고, kubectl 수정은 "되돌아가는 것을 보기 위한 의도적 drift"로만 사용합니다.
+
+### Argo CD의 동작 방식: 비교하고 맞추는 반복 루프
+
+Argo CD는 다음 루프를 계속 반복합니다.
+
+```mermaid
+flowchart LR
+  git["Git의 원하는 상태<br/>(desired)"] --> repo["repo-server<br/>매니페스트 생성"]
+  repo --> ctrl["application-controller<br/>비교"]
+  live["클러스터의 실제 상태<br/>(live)"] --> ctrl
+  ctrl -->|"차이 있음 + 자동 Sync"| apply["apply로 live를 Git에 맞춤"]
+  ctrl -->|"차이 있음 + Manual"| wait["OutOfSync 표시만, 사람이 SYNC"]
+  apply --> live
+```
+
+| 구성요소 | 역할 |
+|---|---|
+| `argocd-repo-server` | Git을 clone하고 YAML·Helm·Kustomize를 최종 매니페스트로 만듭니다. |
+| `argocd-application-controller` | 원하는 상태와 실제 상태를 비교하고, 정책에 따라 Sync·Self Heal·Prune을 실행합니다. |
+| `argocd-server` | 이 실습에서 접속하는 Web UI와 API입니다. |
+| `argocd-redis` | 비교 결과 등의 캐시입니다. 이 실습은 비HA 단일 Redis를 사용합니다. |
+
+### Application: "무엇을 어디에" 배포할지 적은 Kubernetes 리소스
+
+Argo CD의 Application은 CRD(`applications.argoproj.io`) 형식의 Kubernetes 리소스입니다. UI의 NEW APP 화면은 결국 이 리소스를 만드는 입력 양식입니다.
+
+| Application 필드 | 이 실습의 값 | 의미 |
+|---|---|---|
+| `spec.source.repoURL` | 자신의 공개 Fork | 어떤 Git 저장소를 읽을지 |
+| `spec.source.targetRevision` | 추적할 브랜치 | 어떤 브랜치(또는 태그·SHA)를 기준으로 할지 |
+| `spec.source.path` | `manifests/app` | 저장소의 어느 폴더를 배포할지 |
+| `spec.destination` | `in-cluster` / `workshop` | 어느 클러스터·namespace에 배포할지 |
+| `spec.syncPolicy` | 처음 Manual → 05에서 자동 | 차이를 자동으로 맞출지 |
+
+Application 자체는 Argo CD가 있는 `argocd` namespace에 있고, Application이 만드는 Deployment·Service는 `workshop`에 생깁니다.
+
+### 두 가지 상태: Sync Status와 Health Status
+
+UI에서 가장 자주 보게 될 두 상태는 **서로 다른 질문**에 답합니다. 둘 다 확인해야 배포 성공입니다.
+
+| 상태 | 질문 | 주요 값 |
+|---|---|---|
+| **Sync Status** | Git과 클러스터가 같은가? | `Synced` 같음 · `OutOfSync` 다름 · `Unknown` 비교 실패 |
+| **Health Status** | 클러스터의 앱이 정상 동작하는가? | `Healthy` 정상 · `Progressing` 진행 중 · `Degraded` 실패 · `Missing` 아직 없음 · `Suspended` 일시 정지 |
+
+예를 들어 `Synced`인데 `Degraded`이면 Git대로 배포는 됐지만 Pod가 준비되지 않은 상태입니다. 반대로 `OutOfSync`인데 `Healthy`이면 앱은 잘 돌지만 Git과 다릅니다. 05의 Self Heal 실습이 바로 이 상태를 잠깐 만듭니다.
+
+### Azure 쪽에서 생기는 것
+
+| 리소스 | 누가 만들고 관리하나 | 설명 |
+|---|---|---|
+| 실습 리소스 그룹 `rg-argocd-ws-...` | 참가자 | AKS 리소스(와 그 하위 extension)가 속하는 정리 경계 |
+| AKS `aks-argocd-ws-...` | 참가자가 요청, Azure가 control plane 운영 | API 서버·etcd는 Azure가 관리하고 노드만 구독에 생성 |
+| 노드 리소스 그룹 `MC_...` | **AKS가 자동 생성·관리** | 노드 VM Scale Set·디스크·Load Balancer·공인 IP·가상 네트워크 |
+| Argo CD extension | Azure가 설치·수명주기 관리 | AKS 하위 Azure 리소스로 상태가 추적되고, 클러스터 안에는 `argocd` namespace로 설치 |
+| nginx의 공인 IP | Service `type: LoadBalancer`를 보고 AKS가 생성 | `MC_...` 그룹의 Load Balancer에 프런트엔드 IP로 추가 |
+
+`MC_...` 그룹은 AKS가 소유하므로 직접 수정·삭제하지 않습니다. 실습 그룹에서 AKS를 삭제하면 AKS가 이 그룹도 함께 삭제합니다. 06에서 두 그룹의 부재를 모두 확인하는 이유입니다.
+
+### 실습 진행에 따른 상태 변화
+
+| 모듈 종료 시점 | Azure | 클러스터 | Argo CD | Git |
+|---|---|---|---|---|
+| 01 | 변경 없음 | 없음 | 없음 | Fork 생성, replicas 1 |
+| 02 | 실습 그룹·AKS·`MC_` 그룹 | 노드 2개 Ready | 없음 | replicas 1 |
+| 03 | + extension | + `argocd` namespace | UI 로그인 가능, 앱 없음 | replicas 1 |
+| 04 | + nginx 공인 IP | + `workshop`, Pod 1 | `gitops-demo` Manual, Synced·Healthy | replicas 1 |
+| 05 | 동일 | Pod 2 | 자동 Sync·Prune·Self Heal | replicas 2 커밋 |
+| 06 | 두 그룹 모두 없음 | 없음 | 없음 | Fork는 남음, 비용 없음 |
+
 ## 사전 요구사항
 
 | 항목 | 준비 |

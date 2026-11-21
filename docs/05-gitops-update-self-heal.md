@@ -6,6 +6,50 @@
 
 UI에서 자동 Sync·Prune·Self Heal을 활성화합니다. GitHub 웹 커밋의 SHA와 replicas·Ready 수 2를 UI에서 확인하고, 수동 변경 3이 Git 추가 커밋 없이 2로 복귀하는 것을 관찰합니다.
 
+## 이 모듈에서 이해할 개념
+
+👁️ **설명**
+
+이 모듈에서는 같은 "replicas 변경"을 **두 가지 경로**로 일으키고 Argo CD의 반응을 비교합니다.
+
+| 실험 | 변경 위치 | Argo CD가 보는 차이 | 결과 |
+|---|---|---|---|
+| Git 변경 | GitHub 커밋 (1 → 2) | **원하는 상태**가 바뀜 | 클러스터를 2로 맞춤. revision이 새 SHA로 바뀜 |
+| 수동 drift | kubectl scale (2 → 3) | **실제 상태**가 Git과 달라짐 | Self Heal이 Git 값 2로 되돌림. revision은 그대로 |
+
+결론은 "바꾸고 싶으면 Git을 바꿔야 한다"입니다. 클러스터를 직접 바꾼 것은 Git에 기록되지 않으므로 GitOps에서는 되돌려야 할 차이로 취급됩니다.
+
+**Git 변경이 반영되는 흐름**
+
+```mermaid
+sequenceDiagram
+  participant U as 참가자
+  participant G as GitHub Fork
+  participant A as Argo CD
+  participant K as AKS
+  U->>G: replicas 2 커밋 (새 SHA)
+  loop 주기적 폴링 (기본 약 3분)
+    A->>G: 브랜치의 최신 SHA 확인
+  end
+  A->>A: 새 SHA의 매니페스트와 live 비교 → OutOfSync
+  A->>K: 자동 Sync로 Deployment apply
+  K-->>A: Pod 2개 Ready → Synced·Healthy
+```
+
+Argo CD는 기본적으로 Git을 **폴링**합니다. 커밋 직후 바로 반영되지 않아도 정상이며, 몇 분 안에 반영됩니다. 운영 환경에서는 GitHub webhook을 설정해 커밋 즉시 Refresh하도록 만들 수 있습니다. 이 실습은 관리 화면을 공개하지 않으므로 webhook을 사용하지 않습니다.
+
+**세 가지 자동 정책의 차이**
+
+| 정책 | 켜지 않으면 | 켜면 |
+|---|---|---|
+| Automated Sync | Git이 바뀌어도 `OutOfSync` 표시만 하고 사람이 SYNC를 기다림 | Git의 **새 revision**을 자동 반영 |
+| Prune | Git에서 파일을 지워도 클러스터의 리소스는 남음 | Git에서 사라진 관리 리소스를 삭제 |
+| Self Heal | Git은 그대로이고 클러스터만 바뀐 경우 `OutOfSync`로 남음 | live 상태를 **같은 revision**의 Git 값으로 되돌림 |
+
+Automated Sync만 켜면 "새 커밋"에는 반응하지만 "같은 커밋에서 클러스터만 바뀐 경우"는 되돌리지 않습니다. 그래서 4절의 복구 실습에는 Self Heal이 꼭 필요합니다.
+
+**주의할 점: HPA나 다른 도구와의 충돌** HPA(Horizontal Pod Autoscaler)처럼 replicas를 자동으로 바꾸는 도구를 함께 쓰면, Self Heal이 계속 Git 값으로 되돌려 서로 싸울 수 있습니다. 운영에서는 Git의 Deployment에서 `replicas`를 빼거나 Argo CD의 `ignoreDifferences`로 해당 필드를 비교에서 제외합니다. 이 실습에서는 HPA를 추가하지 않습니다.
+
 ## 0. UI 준비
 
 👁️ **설명**

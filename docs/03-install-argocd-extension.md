@@ -6,6 +6,50 @@
 
 Azure extension이 `Succeeded`, Argo CD Deployment·StatefulSet이 준비 완료입니다. 참가자 PC의 로컬 HTTPS로 UI에 로그인하고 초기 비밀번호를 변경합니다. 관리 화면은 외부에 공개하지 않습니다.
 
+## 이 모듈에서 이해할 개념
+
+👁️ **설명**
+
+**클러스터 extension과 Helm 직접 설치의 차이**
+
+Argo CD는 Helm chart나 YAML로 직접 설치할 수도 있습니다. 이 실습은 Azure가 제공하는 **`Microsoft.ArgoCD` 클러스터 extension**을 사용합니다.
+
+| 관점 | Helm·YAML 직접 설치 | AKS 클러스터 extension |
+|---|---|---|
+| 설치 명령 | `helm install` / `kubectl apply` | `az k8s-extension create` |
+| 상태 확인 | 클러스터 안에서만 확인 | Azure 리소스로 `provisioningState`·버전을 portal·CLI에서 확인 |
+| 설정 변경 | values 파일·ConfigMap 직접 수정 | `az k8s-extension update --config ...` |
+| 이미지·버전 | 사용자가 선택 | Microsoft가 빌드·검증한 이미지(MCR)와 release train |
+| 삭제 | `helm uninstall` | `az k8s-extension delete` |
+
+extension이 관리하는 ConfigMap을 `kubectl edit`로 바꾸면 extension이 다시 덮어쓸 수 있습니다. 그래서 설정은 항상 extension 구성 API로 바꿉니다.
+
+**설치 후 클러스터 안의 모습**
+
+```text
+argocd namespace
+├─ argocd-server                  UI·API (이 모듈에서 포트포워딩할 대상)
+├─ argocd-repo-server             Git clone·매니페스트 생성
+├─ argocd-application-controller  비교·Sync·Self Heal (StatefulSet)
+├─ argocd-redis                   캐시 (redis-ha.enabled=false → 단일)
+└─ CRD: applications.argoproj.io  04에서 만들 Application의 형식
+```
+
+위 트리는 구조 예시이며 실제 이름·추가 구성요소는 설치 버전의 출력으로 확인합니다.
+
+**포트포워딩이 하는 일**
+
+```mermaid
+flowchart LR
+  browser["PC 브라우저<br/>https://127.0.0.1:8080"] --> kubectl["PC의 kubectl port-forward"]
+  kubectl -->|"AKS API 서버를 통한 터널"| svc["Service argocd-server:443"]
+  svc --> pod["argocd-server Pod"]
+```
+
+`kubectl port-forward`는 AKS API 서버를 경유하는 터널을 만듭니다. 관리 화면에 공인 IP·Ingress를 붙이지 않으므로 인터넷에서 접근할 수 없습니다. `127.0.0.1`에만 바인딩하므로 같은 네트워크의 다른 PC도 접근할 수 없습니다. 대신 PowerShell 창 A가 열려 있는 동안만 접속됩니다.
+
+**초기 admin 비밀번호의 수명** Argo CD는 설치 시 무작위 비밀번호를 만들어 `argocd-initial-admin-secret`에 저장합니다. 이 Secret은 최초 로그인용입니다. 비밀번호를 바꾼 뒤에는 실제 인증에 쓰이지 않으므로, 새 비밀번호로 로그인되는 것을 확인한 다음 삭제합니다. 순서를 바꾸면 로그인 수단을 잃을 수 있습니다.
+
 ## 0. 작업 대상 복원
 
 👁️ **설명**

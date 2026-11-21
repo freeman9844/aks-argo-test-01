@@ -6,6 +6,32 @@
 
 올바른 Azure 구독, 필요한 권한·공급자 등록, Cloud Shell 및 로컬 도구, 자신의 공개 Fork와 기본 브랜치를 확인합니다.
 
+## 이 모듈에서 이해할 개념
+
+👁️ **설명**
+
+**왜 터미널이 두 개인가요?** Cloud Shell은 Azure portal 안에서 열리는 브라우저 터미널입니다. Azure CLI·kubectl이 미리 설치되어 있고 로그인도 되어 있어 리소스 생성에 편리합니다. 하지만 Cloud Shell은 Azure 데이터센터의 컨테이너에서 실행되므로, 거기서 연 `localhost:8080`을 내 PC 브라우저로 열 수 없습니다. Argo CD UI를 공개하지 않고 내 브라우저로 보려면 **내 PC에서** 포트포워딩을 해야 합니다. 그래서 생성·정리는 Cloud Shell, UI 접속은 PC로 역할을 나눕니다.
+
+**리소스 공급자(Resource Provider)란?** Azure는 서비스 종류마다 API를 제공하는 공급자가 있습니다. 구독에서 해당 공급자가 `Registered` 상태여야 그 종류의 리소스를 만들 수 있습니다.
+
+| 공급자 | 이 실습에서 쓰는 곳 |
+|---|---|
+| `Microsoft.ContainerService` | AKS 클러스터 |
+| `Microsoft.KubernetesConfiguration` | 클러스터 extension(Argo CD 설치 단위) |
+| `Microsoft.Kubernetes` | Azure Arc 연결 클러스터용 공급자. AKS 실습에서는 직접 만들지 않지만 공식 튜토리얼의 사전 등록 목록에 포함 |
+
+**왜 Fork가 필요한가요?** Argo CD는 Git 저장소를 **읽어서** 배포합니다. 05에서 replicas를 바꾸려면 내가 **커밋할 수 있는** 저장소가 필요합니다. 원본은 다른 사람의 저장소이므로 자신의 계정으로 복사본(Fork)을 만들고, Argo CD에는 이 Fork의 주소를 알려 줍니다. 공개 Fork라면 Argo CD는 토큰 없이 HTTPS로 읽을 수 있습니다. 그래서 이 실습에는 GitHub 토큰이 필요 없습니다.
+
+**환경 파일 `$HOME/.aks-argocd-ws-env`의 역할은?** Cloud Shell 변수는 세션이 끝나면 사라집니다. 리소스 이름에는 시각과 난수가 들어가므로 다시 추측하기 어렵습니다. 그래서 이름·구독·Fork 정보를 파일에 저장하고 모든 모듈 첫머리에서 `source`로 다시 읽습니다. 비밀번호·토큰은 저장하지 않습니다.
+
+| 변수 | 의미 |
+|---|---|
+| `RESOURCE_GROUP`·`CLUSTER` | 이번 실습 전용 이름. 다른 참가자·기존 리소스와 겹치지 않도록 접미사 포함 |
+| `REPO_URL`·`GIT_BRANCH` | Argo CD가 읽을 자신의 Fork와 브랜치 |
+| `EXTENSION_NAME`·`APP_NAMESPACE`·`APP_NAME` | 고정값 `argocd`·`workshop`·`gitops-demo` |
+| `AKS_CREATION_ATTEMPTED` | `false` 미시도 · `true` 생성 시도함 · `unknown` 파일을 복구해 알 수 없음. 06에서 노드 그룹 확인을 생략해도 되는지 판단하는 근거 |
+| `NODE_RESOURCE_GROUP` | AKS 생성 후 기록하는 `MC_...` 그룹 이름. 06에서 삭제 완료를 확인할 대상 |
+
 ## 실행 블록 읽는 법
 
 👁️ **설명**
