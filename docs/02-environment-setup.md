@@ -22,10 +22,10 @@ flowchart LR
     aks --- ext
   end
   subgraph mc["노드 그룹 MC_... (AKS가 자동 생성)"]
-    vmss["노드 VM Scale Set ×2"]
-    disk["OS 디스크"]
-    lb["Standard Load Balancer·공인 IP"]
+    vmss["노드 VM Scale Set ×2<br/>(OS 디스크 포함)"]
+    lb["Standard Load Balancer·<br/>아웃바운드 공인 IP"]
     vnet["가상 네트워크·NSG"]
+    mi["kubelet 관리 ID"]
   end
   aks -->|"생성·관리"| mc
 ```

@@ -106,6 +106,7 @@ flowchart LR
 | `argocd-application-controller` | 원하는 상태와 실제 상태를 비교하고, 정책에 따라 Sync·Self Heal·Prune을 실행합니다. |
 | `argocd-server` | 이 실습에서 접속하는 Web UI와 API입니다. |
 | `argocd-redis` | 비교 결과 등의 캐시입니다. 이 실습은 비HA 단일 Redis를 사용합니다. |
+| `argocd-applicationset-controller`·`argocd-dex-server`·`argocd-notifications-controller` | 함께 설치되지만 이 실습에서는 사용하지 않습니다. 각각 Application 일괄 생성, SSO 연동, 알림 기능입니다. |
 
 ### Application: "무엇을 어디에" 배포할지 적은 Kubernetes 리소스
 
@@ -138,9 +139,9 @@ UI에서 가장 자주 보게 될 두 상태는 **서로 다른 질문**에 답�
 |---|---|---|
 | 실습 리소스 그룹 `rg-argocd-ws-...` | 참가자 | AKS 리소스(와 그 하위 extension)가 속하는 정리 경계 |
 | AKS `aks-argocd-ws-...` | 참가자가 요청, Azure가 control plane 운영 | API 서버·etcd는 Azure가 관리하고 노드만 구독에 생성 |
-| 노드 리소스 그룹 `MC_...` | **AKS가 자동 생성·관리** | 노드 VM Scale Set·디스크·Load Balancer·공인 IP·가상 네트워크 |
+| 노드 리소스 그룹 `MC_...` | **AKS가 자동 생성·관리** | 노드 VM Scale Set(OS 디스크 포함)·Load Balancer·아웃바운드 공인 IP·가상 네트워크·NSG·관리 ID(kubelet 등) |
 | Argo CD extension | Azure가 설치·수명주기 관리 | AKS 하위 Azure 리소스로 상태가 추적되고, 클러스터 안에는 `argocd` namespace로 설치 |
-| nginx의 공인 IP | Service `type: LoadBalancer`를 보고 AKS가 생성 | `MC_...` 그룹의 Load Balancer에 프런트엔드 IP로 추가 |
+| nginx의 공인 IP | Service `type: LoadBalancer`를 보고 AKS가 생성 | `MC_...` 그룹에 공인 IP 리소스가 하나 더 생기고 Load Balancer 프런트엔드로 연결 |
 
 `MC_...` 그룹은 AKS가 소유하므로 직접 수정·삭제하지 않습니다. 실습 그룹에서 AKS를 삭제하면 AKS가 이 그룹도 함께 삭제합니다. 06에서 두 그룹의 부재를 모두 확인하는 이유입니다.
 
@@ -278,6 +279,15 @@ Korea Central의 별도 실습 그룹에서 **AKS 생성 전 중단**과 **Appli
 
 같은 리허설에서 AKS **1.36.5**와 extension **1.0.20**으로 nginx의 공개 HTTP 200과 응답 본문, 리허설 커밋으로 전환했을 때 자동 Sync와 Ready Pod 2개, 동일 SHA의 Self Heal, Foreground 삭제를 확인했습니다. 로컬 Bash·`kubectl`·HTTP 클라이언트를 사용했으며, 이 재검증에서 브라우저 UI·GitHub Fork·Cloud Shell·자동 Prune을 다시 실행하지는 않았습니다.
 
+### 개념 설명 재검증 (2026-11-21)
+
+같은 날 새 실습 그룹에서 01~06의 명령 블록을 문서 순서대로 다시 실행하고, [핵심 개념](#핵심-개념-먼저-보기)과 각 모듈 개념 절의 주장을 실측했습니다. 실행 결과는 다음과 같습니다.
+
+- extension은 `managedClusters/<클러스터>/providers/Microsoft.KubernetesConfiguration/extensions/argocd`에 위치합니다. 함께 설치된 Argo CD는 API `v3.5.6`이고, `argocd-cm`의 `timeout.reconciliation`은 `120s`였습니다.
+- Sync 전에는 `OutOfSync`·`Missing`이었고 `workshop` namespace가 없었습니다. Sync 후 `Synced`·`Healthy`와 HTTP 200을 확인했고, `MC_` 그룹의 공인 IP 리소스가 1개에서 2개로 늘었습니다.
+- REFRESH와 HARD REFRESH는 Deployment를 바꾸지 않았습니다.
+- 자동 Sync만 켜고 replicas를 3으로 바꾸면 90초 뒤에도 3과 `OutOfSync`가 유지됐습니다. Self Heal을 켜자 약 2초 만에 1로 돌아갔습니다.
+- Foreground 삭제에서는 Deployment가 먼저 사라지고 Application이 나중에 삭제됐습니다. 마지막으로 두 리소스 그룹의 부재를 확인했습니다.
 ### 행사 전 재검증
 
 - 참가자와 같은 환경에서 개인 GitHub 계정의 공개 Fork·웹 편집, Cloud Shell Bash, 로컬 Windows PowerShell과 브라우저의 공개 HTTP 접근을 확인합니다.

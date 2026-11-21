@@ -32,6 +32,8 @@ argocd namespace
 ├─ argocd-repo-server             Git clone·매니페스트 생성
 ├─ argocd-application-controller  비교·Sync·Self Heal (StatefulSet)
 ├─ argocd-redis                   캐시 (redis-ha.enabled=false → 단일)
+├─ argocd-applicationset-controller · argocd-dex-server · argocd-notifications-controller
+│                                 함께 설치되지만 이 실습에서는 사용하지 않음
 └─ CRD: applications.argoproj.io  04에서 만들 Application의 형식
 ```
 

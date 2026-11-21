@@ -28,7 +28,7 @@ sequenceDiagram
   participant A as Argo CD
   participant K as AKS
   U->>G: replicas 2 커밋 (새 SHA)
-  loop 주기적 폴링 (기본 약 3분)
+  loop 주기적 폴링 (기본 120초 + 최대 60초 지터)
     A->>G: 브랜치의 최신 SHA 확인
   end
   A->>A: 새 SHA의 매니페스트와 live 비교 → OutOfSync
@@ -36,7 +36,7 @@ sequenceDiagram
   K-->>A: Pod 2개 Ready → Synced·Healthy
 ```
 
-Argo CD는 기본적으로 Git을 **폴링**합니다. 커밋 직후 바로 반영되지 않아도 정상이며, 몇 분 안에 반영됩니다. 운영 환경에서는 GitHub webhook을 설정해 커밋 즉시 Refresh하도록 만들 수 있습니다. 이 실습은 관리 화면을 공개하지 않으므로 webhook을 사용하지 않습니다.
+Argo CD는 기본적으로 Git을 **폴링**합니다. 리허설의 extension 1.0.20에서 `argocd-cm`의 `timeout.reconciliation`은 `120s`였고, Argo CD는 여기에 최대 60초의 지터를 더합니다. 그래서 커밋 후 약 2~3분 안에 반영되는 것이 정상입니다. 운영 환경에서는 GitHub webhook을 설정해 커밋 즉시 Refresh하도록 만들 수 있습니다. 이 실습은 관리 화면을 공개하지 않으므로 webhook을 사용하지 않습니다.
 
 **세 가지 자동 정책의 차이**
 
